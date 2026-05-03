@@ -61,6 +61,54 @@ export function Btn({
   );
 }
 
+type PillButtonProps = {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  bg: string;
+  border: string;
+  color: string;
+  ariaLabel?: string;
+  title?: string;
+};
+
+export function PillButton({
+  children,
+  onClick,
+  disabled,
+  bg,
+  border,
+  color,
+  ariaLabel,
+  title,
+}: PillButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background: bg,
+        border: `1px solid ${border}`,
+        color,
+        borderRadius: 20,
+        padding: "3px 10px",
+        fontSize: 12,
+        fontWeight: 500,
+        cursor: disabled ? "default" : "pointer",
+        fontFamily: "inherit",
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 type BadgeProps = {
   children: ReactNode;
   active?: boolean;

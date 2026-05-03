@@ -11,7 +11,7 @@ import {
   toggleLike,
   type Post,
 } from "@/app/lib/firestore";
-import { Btn, Badge } from "./ui";
+import { Btn, Badge, PillButton } from "./ui";
 import { Icon } from "./Icon";
 
 type Props = {
@@ -43,6 +43,8 @@ export function StationSheet({
   const [draftText, setDraftText] = useState("");
   const [draftCats, setDraftCats] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [reportTarget, setReportTarget] = useState<Post | null>(null);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     return subscribePosts(station.key, setPosts);
@@ -65,17 +67,25 @@ export function StationSheet({
     }
   }
 
-  async function handleReport(post: Post) {
+  function requestReport(post: Post) {
     if (!user) {
       onLoginRequest();
       return;
     }
     if (post.reportedBy.includes(user.uid)) return;
-    if (!window.confirm("この投稿を通報しますか？")) return;
+    setReportTarget(post);
+  }
+
+  async function confirmReport() {
+    if (!user || !reportTarget || reporting) return;
+    setReporting(true);
     try {
-      await reportPost(post.id, user.uid);
+      await reportPost(reportTarget.id, user.uid);
+      setReportTarget(null);
     } catch (e) {
       console.error(e);
+    } finally {
+      setReporting(false);
     }
   }
 
@@ -328,6 +338,8 @@ export function StationSheet({
           )}
           {filtered.map((post) => {
             const liked = user ? post.likedBy.includes(user.uid) : false;
+            const reported = user ? post.reportedBy.includes(user.uid) : false;
+            const canReport = !!user && user.uid !== post.userId;
             return (
               <div
                 key={post.id}
@@ -422,22 +434,11 @@ export function StationSheet({
                     gap: 6,
                   }}
                 >
-                  <button
+                  <PillButton
                     onClick={() => handleToggleLike(post)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: liked ? C.red50 : C.slate50,
-                      border: `1px solid ${liked ? C.red200 : C.slate200}`,
-                      color: liked ? C.red500 : C.slate500,
-                      borderRadius: 20,
-                      padding: "3px 10px",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
+                    bg={liked ? C.red50 : C.slate50}
+                    border={liked ? C.red200 : C.slate200}
+                    color={liked ? C.red500 : C.slate500}
                   >
                     <Icon
                       name="heart"
@@ -447,45 +448,120 @@ export function StationSheet({
                       fill={liked ? C.red500 : "none"}
                     />
                     {post.likesCount}
-                  </button>
-                  {user && user.uid !== post.userId && (() => {
-                    const reported = post.reportedBy.includes(user.uid);
-                    return (
-                      <button
-                        onClick={() => handleReport(post)}
-                        disabled={reported}
-                        aria-label={reported ? "通報済み" : "通報する"}
-                        title={reported ? "通報済み" : "通報する"}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          background: C.slate50,
-                          border: `1px solid ${C.slate200}`,
-                          color: reported ? C.slate400 : C.slate500,
-                          borderRadius: 20,
-                          padding: "3px 10px",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          cursor: reported ? "default" : "pointer",
-                          fontFamily: "inherit",
-                          opacity: reported ? 0.6 : 1,
-                        }}
-                      >
-                        <Icon
-                          name="flag"
-                          size={12}
-                          sw={1.5}
-                          color={reported ? C.slate400 : C.slate500}
-                        />
-                        {reported ? "通報済み" : "通報"}
-                      </button>
-                    );
-                  })()}
+                  </PillButton>
+                  {canReport && (
+                    <PillButton
+                      onClick={() => requestReport(post)}
+                      disabled={reported}
+                      ariaLabel={reported ? "通報済み" : "通報する"}
+                      title={reported ? "通報済み" : "通報する"}
+                      bg={C.slate50}
+                      border={C.slate200}
+                      color={reported ? C.slate400 : C.slate500}
+                    >
+                      <Icon
+                        name="flag"
+                        size={12}
+                        sw={1.5}
+                        color={reported ? C.slate400 : C.slate500}
+                      />
+                      {reported ? "通報済み" : "通報"}
+                    </PillButton>
+                  )}
                 </div>
               </div>
             );
           })}
+        </div>
+      </div>
+      {reportTarget && (
+        <ReportConfirmSheet
+          submitting={reporting}
+          onCancel={() => {
+            if (!reporting) setReportTarget(null);
+          }}
+          onConfirm={confirmReport}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReportConfirmSheet({
+  submitting,
+  onCancel,
+  onConfirm,
+}: {
+  submitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 90,
+        display: "flex",
+        alignItems: "flex-end",
+      }}
+    >
+      <div
+        onClick={onCancel}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(15,23,42,0.4)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          background: C.white,
+          borderRadius: "16px 16px 0 0",
+          width: "100%",
+          padding: "0 18px 24px",
+          animation: "slideUp 0.28s ease-out",
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 4,
+            background: C.slate200,
+            borderRadius: 2,
+            margin: "10px auto 16px",
+          }}
+        />
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>
+          この投稿を通報しますか？
+        </h2>
+        <p
+          style={{
+            fontSize: 12,
+            color: C.slate500,
+            marginBottom: 18,
+            lineHeight: 1.6,
+          }}
+        >
+          通報内容は管理者に共有されます。同じ投稿への通報は一度のみです。
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn
+            variant="outline"
+            style={{ flex: 1 }}
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            キャンセル
+          </Btn>
+          <Btn
+            style={{ flex: 1 }}
+            onClick={onConfirm}
+            disabled={submitting}
+          >
+            {submitting ? "送信中..." : "通報する"}
+          </Btn>
         </div>
       </div>
     </div>
