@@ -30,6 +30,8 @@ export type Post = {
   categories: string[];
   likesCount: number;
   likedBy: string[];
+  reportCount: number;
+  reportedBy: string[];
   createdAt: Timestamp | null;
 };
 
@@ -58,6 +60,8 @@ export function subscribePosts(
           categories: data.categories ?? [],
           likesCount: data.likesCount ?? 0,
           likedBy: data.likedBy ?? [],
+          reportCount: data.reportCount ?? 0,
+          reportedBy: data.reportedBy ?? [],
           createdAt: data.createdAt ?? null,
         };
       }),
@@ -87,6 +91,8 @@ export async function addPost(args: {
     categories,
     likesCount: 0,
     likedBy: [],
+    reportCount: 0,
+    reportedBy: [],
     createdAt: serverTimestamp(),
   });
   const statsRef = doc(db, "stationStats", stationKey);
@@ -115,6 +121,21 @@ export async function toggleLike(postId: string, userId: string) {
     tx.update(ref, {
       likedBy: liked ? arrayRemove(userId) : arrayUnion(userId),
       likesCount: increment(liked ? -1 : 1),
+    });
+  });
+}
+
+export async function reportPost(postId: string, userId: string) {
+  const { db } = getFirebase();
+  const ref = doc(db, "posts", postId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const reportedBy: string[] = snap.data().reportedBy ?? [];
+    if (reportedBy.includes(userId)) return;
+    tx.update(ref, {
+      reportedBy: arrayUnion(userId),
+      reportCount: increment(1),
     });
   });
 }

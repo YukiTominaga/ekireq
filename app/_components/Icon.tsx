@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Flag,
   Heart,
   LogIn,
   Map,
@@ -32,6 +33,7 @@ const ICONS: Record<string, LucideIcon> = {
   "user-circle": UserCircle,
   "log-in": LogIn,
   search: Search,
+  flag: Flag,
 };
 
 export type IconName = keyof typeof ICONS;

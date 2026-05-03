@@ -6,6 +6,7 @@ import { C } from "@/app/lib/tokens";
 import { CATEGORIES, type StationWithMeta } from "@/app/lib/stations";
 import {
   addPost,
+  reportPost,
   subscribePosts,
   toggleLike,
   type Post,
@@ -59,6 +60,20 @@ export function StationSheet({
     }
     try {
       await toggleLike(post.id, user.uid);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleReport(post: Post) {
+    if (!user) {
+      onLoginRequest();
+      return;
+    }
+    if (post.reportedBy.includes(user.uid)) return;
+    if (!window.confirm("この投稿を通報しますか？")) return;
+    try {
+      await reportPost(post.id, user.uid);
     } catch (e) {
       console.error(e);
     }
@@ -399,7 +414,14 @@ export function StationSheet({
                     ))}
                   </div>
                 )}
-                <div style={{ paddingLeft: 34 }}>
+                <div
+                  style={{
+                    paddingLeft: 34,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   <button
                     onClick={() => handleToggleLike(post)}
                     style={{
@@ -426,6 +448,40 @@ export function StationSheet({
                     />
                     {post.likesCount}
                   </button>
+                  {user && user.uid !== post.userId && (() => {
+                    const reported = post.reportedBy.includes(user.uid);
+                    return (
+                      <button
+                        onClick={() => handleReport(post)}
+                        disabled={reported}
+                        aria-label={reported ? "通報済み" : "通報する"}
+                        title={reported ? "通報済み" : "通報する"}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          background: C.slate50,
+                          border: `1px solid ${C.slate200}`,
+                          color: reported ? C.slate400 : C.slate500,
+                          borderRadius: 20,
+                          padding: "3px 10px",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          cursor: reported ? "default" : "pointer",
+                          fontFamily: "inherit",
+                          opacity: reported ? 0.6 : 1,
+                        }}
+                      >
+                        <Icon
+                          name="flag"
+                          size={12}
+                          sw={1.5}
+                          color={reported ? C.slate400 : C.slate500}
+                        />
+                        {reported ? "通報済み" : "通報"}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );

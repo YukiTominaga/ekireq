@@ -16,13 +16,27 @@ service cloud.firestore {
                     && request.resource.data.text.size() <= 1000
                     && request.resource.data.likesCount == 0
                     && request.resource.data.likedBy.size() == 0
+                    && request.resource.data.reportCount == 0
+                    && request.resource.data.reportedBy.size() == 0
                     && request.resource.data.categories is list
                     && request.resource.data.categories.size() <= 12;
 
-      // 更新: ログイン中のユーザーが「いいね」操作 (likedBy / likesCount のみ) を行う場合のみ
+      // 更新: ログイン中のユーザーが「いいね」操作 (likedBy / likesCount のみ)
+      // または「通報」操作 (reportedBy / reportCount のみ、自分の UID を 1 件追加) を行う場合のみ
       allow update: if request.auth != null
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['likedBy', 'likesCount']);
+                    && (
+                      request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['likedBy', 'likesCount'])
+                      ||
+                      (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['reportedBy', 'reportCount'])
+                        && !(request.auth.uid in resource.data.reportedBy)
+                        && (request.auth.uid in request.resource.data.reportedBy)
+                        && request.resource.data.reportCount ==
+                           resource.data.reportCount + 1
+                      )
+                    );
 
       // 削除: 投稿者本人のみ
       allow delete: if request.auth != null
