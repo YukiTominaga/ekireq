@@ -8,7 +8,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import type { StationWithMeta } from "@/app/lib/stations";
 import { Icon } from "./Icon";
@@ -151,9 +151,14 @@ function ClusteredStationMarkers({
     clusterer.addMarkers(Object.values(markers));
   }, [markers]);
 
-  const setMarkerRef = useCallback(
-    (key: string) =>
-      (marker: google.maps.marker.AdvancedMarkerElement | null) => {
+  const markerRefs = useMemo(() => {
+    const cache: Record<
+      string,
+      (marker: google.maps.marker.AdvancedMarkerElement | null) => void
+    > = {};
+    for (const s of stations) {
+      const key = s.key;
+      cache[key] = (marker) => {
         setMarkers((prev) => {
           if (marker && prev[key] === marker) return prev;
           if (!marker && !prev[key]) return prev;
@@ -165,9 +170,10 @@ function ClusteredStationMarkers({
           }
           return next;
         });
-      },
-    [],
-  );
+      };
+    }
+    return cache;
+  }, [stations]);
 
   return (
     <>
@@ -176,7 +182,7 @@ function ClusteredStationMarkers({
         return (
           <AdvancedMarker
             key={stn.key}
-            ref={setMarkerRef(stn.key)}
+            ref={markerRefs[stn.key]}
             position={{ lat: stn.lat, lng: stn.lng }}
             onClick={() => onSelect(stn)}
             title={
