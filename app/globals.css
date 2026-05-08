@@ -59,10 +59,10 @@ body {
   transform: scale(1.15);
 }
 
-/* 投稿なし駅の不可視クリック領域 — Google ラベルに重ねて確実にクリック判定 */
+/* 投稿なし駅の不可視クリック領域 — count>0 のバッジを横取りしないよう小さめに */
 .stn-hit {
-  width: 30px;
-  height: 30px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   background: transparent;
 }

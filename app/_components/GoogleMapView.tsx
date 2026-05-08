@@ -7,31 +7,42 @@ import {
   Map,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { useEffect, useMemo, useState } from "react";
+import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import type { StationWithMeta } from "@/app/lib/stations";
 import { Icon } from "./Icon";
 
 const TOKYO_CENTER = { lat: 35.6812, lng: 139.7671 };
 const DEFAULT_MAP_ID = "DEMO_MAP_ID";
-const NEAREST_THRESHOLD_DEG = 0.001;
+const POI_HIT_THRESHOLD_PX = 30;
 const SEARCH_ZOOM = 16;
 
-function findNearestStation(
+function findStationByPixel(
+  map: google.maps.Map,
   stations: StationWithMeta[],
-  lat: number,
-  lng: number,
+  clickLatLng: google.maps.LatLng,
+  thresholdPx = POI_HIT_THRESHOLD_PX,
 ): StationWithMeta | null {
-  let best: StationWithMeta | null = null;
-  let bestDist = Infinity;
+  const proj = map.getProjection();
+  if (!proj) return null;
+  const zoom = map.getZoom();
+  if (zoom == null) return null;
+  const scale = 2 ** zoom;
+  const clickPt = proj.fromLatLngToPoint(clickLatLng);
+  if (!clickPt) return null;
+  let only: StationWithMeta | null = null;
   for (const s of stations) {
-    const d = Math.hypot(s.lat - lat, s.lng - lng);
-    if (d <= NEAREST_THRESHOLD_DEG && d < bestDist) {
-      best = s;
-      bestDist = d;
+    const sp = proj.fromLatLngToPoint(new google.maps.LatLng(s.lat, s.lng));
+    if (!sp) continue;
+    const dx = (sp.x - clickPt.x) * scale;
+    const dy = (sp.y - clickPt.y) * scale;
+    if (Math.hypot(dx, dy) <= thresholdPx) {
+      if (only) return null;
+      only = s;
     }
   }
-  return best;
+  return only;
 }
 
 type Props = {
@@ -69,30 +80,11 @@ export function GoogleMapView({
           style={{ width: "100%", height: "100%" }}
         >
           <MapClickListener stations={stations} onSelect={onSelect} />
-
-          {stations.map((stn) => {
-            const count = counts[stn.key] ?? 0;
-            return (
-              <AdvancedMarker
-                key={stn.key}
-                position={{ lat: stn.lat, lng: stn.lng }}
-                onClick={() => onSelect(stn)}
-                title={
-                  count > 0
-                    ? `${stn.name}駅: ${count}件の投稿`
-                    : `${stn.name}駅`
-                }
-                anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
-              >
-                {count > 0 ? (
-                  <div className="stn-badge">{count}</div>
-                ) : (
-                  <div className="stn-hit" />
-                )}
-              </AdvancedMarker>
-            );
-          })}
-
+          <ClusteredStationMarkers
+            stations={stations}
+            counts={counts}
+            onSelect={onSelect}
+          />
           <MapSearch stations={stations} onSelect={onSelect} />
         </Map>
       </APIProvider>
@@ -117,13 +109,92 @@ function MapClickListener({
         e.stop();
         const ll = e.latLng;
         if (!ll) return;
-        const nearest = findNearestStation(stations, ll.lat(), ll.lng());
-        if (nearest) onSelect(nearest);
+        const hit = findStationByPixel(map, stations, ll);
+        if (hit) onSelect(hit);
       },
     );
     return () => listener.remove();
   }, [map, stations, onSelect]);
   return null;
+}
+
+function ClusteredStationMarkers({
+  stations,
+  counts,
+  onSelect,
+}: {
+  stations: StationWithMeta[];
+  counts: Record<string, number>;
+  onSelect: (s: StationWithMeta) => void;
+}) {
+  const map = useMap();
+  const [markers, setMarkers] = useState<
+    Record<string, google.maps.marker.AdvancedMarkerElement>
+  >({});
+  const clustererRef = useRef<MarkerClusterer | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const clusterer = new MarkerClusterer({ map });
+    clustererRef.current = clusterer;
+    return () => {
+      clusterer.clearMarkers();
+      clusterer.setMap(null);
+      clustererRef.current = null;
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const clusterer = clustererRef.current;
+    if (!clusterer) return;
+    clusterer.clearMarkers();
+    clusterer.addMarkers(Object.values(markers));
+  }, [markers]);
+
+  const setMarkerRef = useCallback(
+    (key: string) =>
+      (marker: google.maps.marker.AdvancedMarkerElement | null) => {
+        setMarkers((prev) => {
+          if (marker && prev[key] === marker) return prev;
+          if (!marker && !prev[key]) return prev;
+          const next = { ...prev };
+          if (marker) {
+            next[key] = marker;
+          } else {
+            delete next[key];
+          }
+          return next;
+        });
+      },
+    [],
+  );
+
+  return (
+    <>
+      {stations.map((stn) => {
+        const count = counts[stn.key] ?? 0;
+        return (
+          <AdvancedMarker
+            key={stn.key}
+            ref={setMarkerRef(stn.key)}
+            position={{ lat: stn.lat, lng: stn.lng }}
+            onClick={() => onSelect(stn)}
+            title={
+              count > 0 ? `${stn.name}駅: ${count}件の投稿` : `${stn.name}駅`
+            }
+            anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
+            zIndex={count > 0 ? 1000 : 1}
+          >
+            {count > 0 ? (
+              <div className="stn-badge">{count}</div>
+            ) : (
+              <div className="stn-hit" />
+            )}
+          </AdvancedMarker>
+        );
+      })}
+    </>
+  );
 }
 
 function MapSearch({

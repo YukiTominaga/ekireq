@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@vis.gl/react-google-maps": "^1.8.3",
     "firebase": "^12.12.1",
     "lucide-react": "^1.11.0",
