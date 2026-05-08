@@ -31,8 +31,19 @@ export type Post = {
   categories: string[];
   likesCount: number;
   likedBy: string[];
+  reportsCount: number;
   createdAt: Timestamp | null;
 };
+
+export const REPORT_REASONS = [
+  { code: "spam", label: "スパム・宣伝" },
+  { code: "harassment", label: "誹謗中傷・嫌がらせ" },
+  { code: "inappropriate", label: "性的・暴力的な内容" },
+  { code: "personal_info", label: "個人情報の掲載" },
+  { code: "other", label: "その他" },
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number]["code"];
 
 export function subscribePosts(
   stationKey: string,
@@ -60,6 +71,7 @@ export function subscribePosts(
           categories: data.categories ?? [],
           likesCount: data.likesCount ?? 0,
           likedBy: data.likedBy ?? [],
+          reportsCount: data.reportsCount ?? 0,
           createdAt: data.createdAt ?? null,
         };
       }),
@@ -90,6 +102,7 @@ export async function addPost(args: {
     categories,
     likesCount: 0,
     likedBy: [],
+    reportsCount: 0,
     createdAt: serverTimestamp(),
   });
   const statsRef = doc(db, "stationStats", stationKey);
@@ -119,6 +132,41 @@ export async function toggleLike(postId: string, userId: string) {
       likedBy: liked ? arrayRemove(userId) : arrayUnion(userId),
       likesCount: increment(liked ? -1 : 1),
     });
+  });
+}
+
+export class AlreadyReportedError extends Error {
+  constructor() {
+    super("既に通報済みです");
+    this.name = "AlreadyReportedError";
+  }
+}
+
+export async function reportPost(args: {
+  post: Post;
+  user: User;
+  reason: ReportReason;
+}) {
+  const { post, user, reason } = args;
+  if (post.userId === user.uid) {
+    throw new Error("自分の投稿は通報できません");
+  }
+  const { db } = getFirebase();
+  const reportRef = doc(db, "reports", `${post.id}_${user.uid}`);
+  const postRef = doc(db, "posts", post.id);
+  await runTransaction(db, async (tx) => {
+    const reportSnap = await tx.get(reportRef);
+    if (reportSnap.exists()) {
+      throw new AlreadyReportedError();
+    }
+    tx.set(reportRef, {
+      postId: post.id,
+      stationKey: post.stationKey,
+      reporterId: user.uid,
+      reason,
+      createdAt: serverTimestamp(),
+    });
+    tx.update(postRef, { reportsCount: increment(1) });
   });
 }
 

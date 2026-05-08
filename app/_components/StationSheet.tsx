@@ -6,9 +6,13 @@ import { C } from "@/app/lib/tokens";
 import { CATEGORIES, type StationWithMeta } from "@/app/lib/stations";
 import {
   addPost,
+  AlreadyReportedError,
+  REPORT_REASONS,
+  reportPost,
   subscribePosts,
   toggleLike,
   type Post,
+  type ReportReason,
 } from "@/app/lib/firestore";
 import { Btn, Badge } from "./ui";
 import { Icon } from "./Icon";
@@ -42,6 +46,9 @@ export function StationSheet({
   const [draftText, setDraftText] = useState("");
   const [draftCats, setDraftCats] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [reportTarget, setReportTarget] = useState<Post | null>(null);
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     return subscribePosts(station.key, setPosts);
@@ -61,6 +68,42 @@ export function StationSheet({
       await toggleLike(post.id, user.uid);
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  function handleReportClick(post: Post) {
+    if (!user) {
+      onLoginRequest();
+      return;
+    }
+    setReportReason(null);
+    setReportTarget(post);
+  }
+
+  function closeReportModal() {
+    setReportTarget(null);
+    setReportReason(null);
+  }
+
+  async function handleSubmitReport() {
+    if (!user || !reportTarget || !reportReason || reporting) return;
+    setReporting(true);
+    try {
+      await reportPost({
+        post: reportTarget,
+        user,
+        reason: reportReason,
+      });
+      closeReportModal();
+    } catch (e) {
+      console.error(e);
+      if (e instanceof AlreadyReportedError) {
+        alert("この投稿は既に通報済みです");
+      } else {
+        alert("通報の送信に失敗しました");
+      }
+    } finally {
+      setReporting(false);
     }
   }
 
@@ -87,6 +130,7 @@ export function StationSheet({
   }
 
   return (
+    <>
     <div
       style={{
         position: "absolute",
@@ -416,7 +460,14 @@ export function StationSheet({
                     ))}
                   </div>
                 )}
-                <div style={{ paddingLeft: 34 }}>
+                <div
+                  style={{
+                    paddingLeft: 34,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   <button
                     onClick={() => handleToggleLike(post)}
                     style={{
@@ -443,6 +494,34 @@ export function StationSheet({
                     />
                     {post.likesCount}
                   </button>
+                  {post.userId !== user?.uid && (
+                    <button
+                      onClick={() => handleReportClick(post)}
+                      aria-label="この投稿を通報"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        background: C.slate50,
+                        border: `1px solid ${C.slate200}`,
+                        color: C.slate500,
+                        borderRadius: 20,
+                        padding: "3px 10px",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      <Icon
+                        name="flag"
+                        size={12}
+                        sw={1.5}
+                        color={C.slate400}
+                      />
+                      {post.reportsCount}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -450,5 +529,114 @@ export function StationSheet({
         </div>
       </div>
     </div>
+    {reportTarget && (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        }}
+      >
+        <div
+          onClick={reporting ? undefined : closeReportModal}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(15,23,42,0.45)",
+          }}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
+          style={{
+            position: "relative",
+            background: C.white,
+            borderRadius: 14,
+            width: "100%",
+            maxWidth: 360,
+            padding: 18,
+            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <h3
+            id="report-modal-title"
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: C.slate900,
+            }}
+          >
+            投稿を通報
+          </h3>
+          <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
+            通報の理由を選択してください。送信された通報は運営側で確認します。
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {REPORT_REASONS.map((r) => {
+              const checked = reportReason === r.code;
+              return (
+                <label
+                  key={r.code}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: `1px solid ${checked ? C.slate900 : C.slate200}`,
+                    background: checked ? C.slate100 : C.white,
+                    fontSize: 13,
+                    color: C.slate800,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="report-reason"
+                    value={r.code}
+                    checked={checked}
+                    onChange={() => setReportReason(r.code)}
+                    style={{ accentColor: C.slate900 }}
+                  />
+                  {r.label}
+                </label>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Btn
+              variant="ghost"
+              onClick={closeReportModal}
+              disabled={reporting}
+            >
+              キャンセル
+            </Btn>
+            <Btn
+              variant="primary"
+              onClick={handleSubmitReport}
+              disabled={!reportReason || reporting}
+            >
+              {reporting ? "送信中…" : "通報する"}
+            </Btn>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
