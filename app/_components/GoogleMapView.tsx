@@ -4,10 +4,10 @@ import {
   APIProvider,
   AdvancedMarker,
   AdvancedMarkerAnchorPoint,
-  Map,
+  Map as GMap,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { MarkerClusterer, type Cluster } from "@googlemaps/markerclusterer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import type { StationWithMeta } from "@/app/lib/stations";
@@ -63,7 +63,7 @@ export function GoogleMapView({
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <APIProvider apiKey={apiKey}>
-        <Map
+        <GMap
           mapId={mapId}
           defaultCenter={TOKYO_CENTER}
           defaultZoom={11}
@@ -86,7 +86,7 @@ export function GoogleMapView({
             onSelect={onSelect}
           />
           <MapSearch stations={stations} onSelect={onSelect} />
-        </Map>
+        </GMap>
       </APIProvider>
     </div>
   );
@@ -132,10 +132,43 @@ function ClusteredStationMarkers({
     Record<string, google.maps.marker.AdvancedMarkerElement>
   >({});
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const markerStationsRef = useRef<
+    WeakMap<google.maps.marker.AdvancedMarkerElement, StationWithMeta>
+  >(new WeakMap());
+  const countsRef = useRef(counts);
+  useEffect(() => {
+    countsRef.current = counts;
+  }, [counts]);
 
   useEffect(() => {
     if (!map) return;
-    const clusterer = new MarkerClusterer({ map });
+    const renderer = {
+      render: (cluster: Cluster) => {
+        const { position, markers: clusterMarkers } = cluster;
+        let sum = 0;
+        if (clusterMarkers) {
+          for (const m of clusterMarkers) {
+            const stn = markerStationsRef.current.get(
+              m as google.maps.marker.AdvancedMarkerElement,
+            );
+            if (stn) sum += countsRef.current[stn.key] ?? 0;
+          }
+        }
+        const el = document.createElement("div");
+        if (sum > 0) {
+          el.className = "stn-badge";
+          el.textContent = String(sum);
+        } else {
+          el.className = "stn-hit";
+        }
+        return new google.maps.marker.AdvancedMarkerElement({
+          position,
+          content: el,
+          zIndex: sum > 0 ? 2000 : 1,
+        });
+      },
+    };
+    const clusterer = new MarkerClusterer({ map, renderer });
     clustererRef.current = clusterer;
     return () => {
       clusterer.clearMarkers();
@@ -149,7 +182,7 @@ function ClusteredStationMarkers({
     if (!clusterer) return;
     clusterer.clearMarkers();
     clusterer.addMarkers(Object.values(markers));
-  }, [markers]);
+  }, [markers, counts]);
 
   const markerRefs = useMemo(() => {
     const cache: Record<
@@ -159,6 +192,7 @@ function ClusteredStationMarkers({
     for (const s of stations) {
       const key = s.key;
       cache[key] = (marker) => {
+        if (marker) markerStationsRef.current.set(marker, s);
         setMarkers((prev) => {
           if (marker && prev[key] === marker) return prev;
           if (!marker && !prev[key]) return prev;
