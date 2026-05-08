@@ -343,9 +343,26 @@ export function StationSheet({
                         fontSize: 11,
                         fontWeight: 700,
                         color: C.slate600,
+                        overflow: "hidden",
                       }}
                     >
-                      {post.userName[0] ?? "?"}
+                      {post.userPhotoURL ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={post.userPhotoURL}
+                          alt=""
+                          width={26}
+                          height={26}
+                          referrerPolicy="no-referrer"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        (post.userName[0] ?? "?")
+                      )}
                     </div>
                     <span
                       style={{

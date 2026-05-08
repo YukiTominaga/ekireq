@@ -62,6 +62,9 @@ export function GoogleMapView({
           clickableIcons={true}
           streetViewControl={false}
           panControl={false}
+          cameraControl={false}
+          zoomControl={false}
+          rotateControl={false}
           fullscreenControl={false}
           style={{ width: "100%", height: "100%" }}
         >

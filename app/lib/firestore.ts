@@ -26,6 +26,7 @@ export type Post = {
   prefecture: string;
   userId: string;
   userName: string;
+  userPhotoURL: string | null;
   text: string;
   categories: string[];
   likesCount: number;
@@ -54,6 +55,7 @@ export function subscribePosts(
           prefecture: data.prefecture,
           userId: data.userId,
           userName: data.userName,
+          userPhotoURL: data.userPhotoURL ?? null,
           text: data.text,
           categories: data.categories ?? [],
           likesCount: data.likesCount ?? 0,
@@ -83,6 +85,7 @@ export async function addPost(args: {
     prefecture,
     userId: user.uid,
     userName: user.displayName || user.email?.split("@")[0] || "ゲスト",
+    userPhotoURL: user.photoURL ?? null,
     text,
     categories,
     likesCount: 0,
