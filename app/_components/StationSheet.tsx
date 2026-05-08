@@ -15,6 +15,7 @@ import {
   type Post,
   type ReportReason,
 } from "@/app/lib/firestore";
+import { formatTime } from "@/app/lib/format";
 import { Btn, Badge } from "./ui";
 import { Icon } from "./Icon";
 
@@ -24,16 +25,6 @@ type Props = {
   onClose: () => void;
   onLoginRequest: () => void;
 };
-
-function formatTime(ts: Post["createdAt"]): string {
-  if (!ts) return "";
-  const d = ts.toDate();
-  const m = String(d.getMonth() + 1);
-  const day = String(d.getDate());
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${m}/${day} ${hh}:${mm}`;
-}
 
 export function StationSheet({
   station,

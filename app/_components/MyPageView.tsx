@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { C } from "@/app/lib/tokens";
-import { getMyPostCount } from "@/app/lib/firestore";
+import { subscribeMyPosts, type Post } from "@/app/lib/firestore";
+import { getUniqueStations, type StationWithMeta } from "@/app/lib/stations";
+import { formatTime } from "@/app/lib/format";
 import { Btn } from "./ui";
 import { Icon } from "./Icon";
 
@@ -14,21 +16,56 @@ type Props = {
   onLogout: () => void;
 };
 
+type StationGroup = {
+  key: string;
+  stationName: string;
+  prefecture: string;
+  line: string;
+  posts: Post[];
+  latestMs: number;
+};
+
 export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
-  const [postCount, setPostCount] = useState<number | null>(null);
+  const [posts, setPosts] = useState<Post[] | null>(null);
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
-    getMyPostCount(user.uid)
-      .then((n) => {
-        if (!cancelled) setPostCount(n);
-      })
-      .catch((e) => console.error(e));
-    return () => {
-      cancelled = true;
-    };
+    const unsub = subscribeMyPosts(user.uid, setPosts);
+    return () => unsub();
   }, [user]);
+
+  const stationMetaByKey = useMemo(() => {
+    const m = new Map<string, StationWithMeta>();
+    for (const s of getUniqueStations()) m.set(s.key, s);
+    return m;
+  }, []);
+
+  const groups: StationGroup[] = useMemo(() => {
+    if (!posts) return [];
+    const byKey = new Map<string, Post[]>();
+    for (const p of posts) {
+      const arr = byKey.get(p.stationKey);
+      if (arr) arr.push(p);
+      else byKey.set(p.stationKey, [p]);
+    }
+    return Array.from(byKey.entries())
+      .map(([key, list]) => ({
+        key,
+        posts: list,
+        stationName: list[0].stationName,
+        prefecture: list[0].prefecture,
+        line: stationMetaByKey.get(key)?.line ?? "",
+        latestMs: list[0].createdAt?.toMillis() ?? 0,
+      }))
+      .sort((a, b) => b.latestMs - a.latestMs);
+  }, [posts, stationMetaByKey]);
+
+  const isOpen = (k: string) => openMap[k] ?? groups.length === 1;
+
+  function toggleOpen(key: string, currentlyOpen: boolean) {
+    setOpenMap((m) => ({ ...m, [key]: !currentlyOpen }));
+  }
 
   if (!user) {
     return (
@@ -153,29 +190,205 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
           </div>
         </div>
       </div>
+
       <div
         style={{
           background: C.white,
           borderRadius: 10,
           border: `1px solid ${C.slate200}`,
           marginBottom: 14,
-          overflow: "hidden",
+          padding: "13px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
+        <span style={{ fontSize: 13, color: C.slate600 }}>投稿</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.slate900 }}>
+          {posts === null
+            ? "..."
+            : `${posts.length}件 / ${groups.length}駅`}
+        </span>
+      </div>
+
+      {posts !== null && groups.length === 0 && (
+        <div
+          style={{
+            background: C.white,
+            borderRadius: 10,
+            border: `1px solid ${C.slate200}`,
+            padding: "28px 20px",
+            textAlign: "center",
+            color: C.slate500,
+            fontSize: 13,
+            lineHeight: 1.7,
+            marginBottom: 14,
+          }}
+        >
+          まだ投稿がありません。
+          <br />
+          地図から駅をタップして投稿してみよう
+        </div>
+      )}
+
+      {groups.length > 0 && (
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "13px 16px",
+            flexDirection: "column",
+            gap: 10,
+            marginBottom: 14,
           }}
         >
-          <span style={{ fontSize: 13, color: C.slate600 }}>投稿した数</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.slate900 }}>
-            {postCount === null ? "..." : `${postCount}件`}
-          </span>
+          {groups.map((g) => {
+            const open = isOpen(g.key);
+            return (
+              <div
+                key={g.key}
+                style={{
+                  background: C.white,
+                  borderRadius: 10,
+                  border: `1px solid ${C.slate200}`,
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleOpen(g.key, open)}
+                  aria-expanded={open}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    padding: "12px 14px",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: C.slate900,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {g.stationName}駅
+                    </div>
+                    <div style={{ fontSize: 11, color: C.slate500 }}>
+                      {g.prefecture}
+                      {g.line ? ` · ${g.line}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: C.slate600,
+                      background: C.slate100,
+                      borderRadius: 999,
+                      padding: "2px 8px",
+                    }}
+                  >
+                    {g.posts.length}件
+                  </span>
+                  <Icon
+                    name={open ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color={C.slate400}
+                  />
+                </button>
+                {open && (
+                  <div style={{ borderTop: `1px solid ${C.slate100}` }}>
+                    {g.posts.map((post) => (
+                      <div
+                        key={post.id}
+                        style={{
+                          padding: "12px 14px",
+                          borderBottom: `1px solid ${C.slate100}`,
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                            color: C.slate800,
+                            marginBottom: 8,
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {post.text}
+                        </p>
+                        {post.categories.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 4,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {post.categories.map((cat) => (
+                              <span
+                                key={cat}
+                                style={{
+                                  fontSize: 11,
+                                  padding: "2px 7px",
+                                  borderRadius: 20,
+                                  background: C.slate100,
+                                  color: C.slate600,
+                                }}
+                              >
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 12,
+                              color: C.slate500,
+                            }}
+                          >
+                            <Icon
+                              name="heart"
+                              size={12}
+                              sw={1.5}
+                              color={C.slate400}
+                            />
+                            {post.likesCount}
+                          </span>
+                          <span style={{ fontSize: 11, color: C.slate400 }}>
+                            {formatTime(post.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
+
       <Btn variant="secondary" style={{ width: "100%" }} onClick={onLogout}>
         ログアウト
       </Btn>

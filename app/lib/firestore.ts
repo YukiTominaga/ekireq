@@ -5,7 +5,6 @@ import {
   arrayUnion,
   collection,
   doc,
-  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -76,6 +75,41 @@ export function subscribePosts(
         };
       }),
     );
+  });
+}
+
+export function subscribeMyPosts(
+  userId: string,
+  cb: (posts: Post[]) => void,
+): () => void {
+  const { db } = getFirebase();
+  // orderBy は付けず、複合インデックス追加を避けてクライアント側でソートする
+  const q = query(collection(db, "posts"), where("userId", "==", userId));
+  return onSnapshot(q, (snap) => {
+    const posts = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        stationKey: data.stationKey,
+        stationName: data.stationName,
+        prefecture: data.prefecture,
+        userId: data.userId,
+        userName: data.userName,
+        userPhotoURL: data.userPhotoURL ?? null,
+        text: data.text,
+        categories: data.categories ?? [],
+        likesCount: data.likesCount ?? 0,
+        likedBy: data.likedBy ?? [],
+        reportsCount: data.reportsCount ?? 0,
+        createdAt: data.createdAt ?? null,
+      } as Post;
+    });
+    posts.sort((a, b) => {
+      const ta = a.createdAt?.toMillis() ?? 0;
+      const tb = b.createdAt?.toMillis() ?? 0;
+      return tb - ta;
+    });
+    cb(posts);
   });
 }
 
@@ -199,9 +233,3 @@ export function subscribeStationCounts(
   });
 }
 
-export async function getMyPostCount(userId: string): Promise<number> {
-  const { db } = getFirebase();
-  const q = query(collection(db, "posts"), where("userId", "==", userId));
-  const snap = await getDocs(q);
-  return snap.size;
-}

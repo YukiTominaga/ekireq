@@ -191,6 +191,7 @@ export function StationApp() {
             }}
           >
             <MyPageView
+              key={user?.uid ?? "anon"}
               user={user}
               isAdmin={isAdmin}
               onLogin={handleLoginRequest}
