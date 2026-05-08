@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "emulator": "firebase emulators:start --only auth,firestore",
+    "emulator": "firebase emulators:start --only auth,firestore,functions",
     "test": "vitest run",
     "test:watch": "vitest"
   },

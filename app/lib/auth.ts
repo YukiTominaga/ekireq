@@ -13,16 +13,28 @@ import { getFirebase } from "./firebase";
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const { auth } = getFirebase();
-    return onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        try {
+          const res = await u.getIdTokenResult();
+          setIsAdmin(res.claims.admin === true);
+        } catch (e) {
+          console.error(e);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setReady(true);
     });
   }, []);
 
-  return { user, ready };
+  return { user, ready, isAdmin };
 }
 
 export async function signInWithGoogle() {

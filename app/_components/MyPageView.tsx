@@ -9,11 +9,12 @@ import { Icon } from "./Icon";
 
 type Props = {
   user: User | null;
+  isAdmin: boolean;
   onLogin: () => void;
   onLogout: () => void;
 };
 
-export function MyPageView({ user, onLogin, onLogout }: Props) {
+export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
   const [postCount, setPostCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -126,9 +127,26 @@ export function MyPageView({ user, onLogin, onLogout }: Props) {
             )}
           </div>
           <div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>
-              {user.displayName || "ユーザー"}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <p style={{ fontWeight: 600, fontSize: 15 }}>
+                {user.displayName || "ユーザー"}
+              </p>
+              {isAdmin && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 0.4,
+                    color: C.white,
+                    background: C.blue600,
+                    padding: "2px 7px",
+                    borderRadius: 999,
+                  }}
+                >
+                  管理者
+                </span>
+              )}
+            </div>
             <p style={{ fontSize: 12, color: C.slate500, marginTop: 2 }}>
               {user.email ?? ""}
             </p>
