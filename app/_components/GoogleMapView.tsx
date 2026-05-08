@@ -144,16 +144,27 @@ function ClusteredStationMarkers({
     if (!map) return;
     const renderer = {
       render: (cluster: Cluster) => {
-        const { position, markers: clusterMarkers } = cluster;
+        const { position: centroid, markers: clusterMarkers } = cluster;
         let sum = 0;
+        let anchor: StationWithMeta | null = null;
+        let anchorCount = -1;
         if (clusterMarkers) {
           for (const m of clusterMarkers) {
             const stn = markerStationsRef.current.get(
               m as google.maps.marker.AdvancedMarkerElement,
             );
-            if (stn) sum += countsRef.current[stn.key] ?? 0;
+            if (!stn) continue;
+            const c = countsRef.current[stn.key] ?? 0;
+            sum += c;
+            if (c > anchorCount) {
+              anchorCount = c;
+              anchor = stn;
+            }
           }
         }
+        const position = anchor
+          ? { lat: anchor.lat, lng: anchor.lng }
+          : centroid;
         const el = document.createElement("div");
         if (sum > 0) {
           el.className = "stn-badge";
