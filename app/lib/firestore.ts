@@ -119,6 +119,22 @@ export async function addPost(args: {
   await batch.commit();
 }
 
+export async function deletePost(args: {
+  postId: string;
+  stationKey: string;
+}) {
+  const { db } = getFirebase();
+  const { postId, stationKey } = args;
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "posts", postId));
+  batch.set(
+    doc(db, "stationStats", stationKey),
+    { postCount: increment(-1) },
+    { merge: true },
+  );
+  await batch.commit();
+}
+
 export async function toggleLike(postId: string, userId: string) {
   const { db } = getFirebase();
   const ref = doc(db, "posts", postId);

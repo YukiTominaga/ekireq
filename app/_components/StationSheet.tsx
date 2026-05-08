@@ -7,6 +7,7 @@ import { CATEGORIES, type StationWithMeta } from "@/app/lib/stations";
 import {
   addPost,
   AlreadyReportedError,
+  deletePost,
   REPORT_REASONS,
   reportPost,
   subscribePosts,
@@ -49,6 +50,8 @@ export function StationSheet({
   const [reportTarget, setReportTarget] = useState<Post | null>(null);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     return subscribePosts(station.key, setPosts);
@@ -83,6 +86,28 @@ export function StationSheet({
   function closeReportModal() {
     setReportTarget(null);
     setReportReason(null);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteTarget(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!user || !deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await deletePost({
+        postId: deleteTarget.id,
+        stationKey: deleteTarget.stationKey,
+      });
+      setDeleteTarget(null);
+    } catch (e) {
+      console.error(e);
+      alert("削除に失敗しました");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleSubmitReport() {
@@ -522,6 +547,34 @@ export function StationSheet({
                       {post.reportsCount}
                     </button>
                   )}
+                  {post.userId === user?.uid && (
+                    <button
+                      onClick={() => setDeleteTarget(post)}
+                      aria-label="この投稿を削除"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        background: C.slate50,
+                        border: `1px solid ${C.slate200}`,
+                        color: C.slate500,
+                        borderRadius: 20,
+                        padding: "3px 10px",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      <Icon
+                        name="trash"
+                        size={12}
+                        sw={1.5}
+                        color={C.slate400}
+                      />
+                      削除
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -632,6 +685,82 @@ export function StationSheet({
               disabled={!reportReason || reporting}
             >
               {reporting ? "送信中…" : "通報する"}
+            </Btn>
+          </div>
+        </div>
+      </div>
+    )}
+    {deleteTarget && (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        }}
+      >
+        <div
+          onClick={closeDeleteModal}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(15,23,42,0.45)",
+          }}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+          style={{
+            position: "relative",
+            background: C.white,
+            borderRadius: 14,
+            width: "100%",
+            maxWidth: 360,
+            padding: 18,
+            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <h3
+            id="delete-modal-title"
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: C.slate900,
+            }}
+          >
+            投稿を削除
+          </h3>
+          <p style={{ fontSize: 13, color: C.slate600, lineHeight: 1.6 }}>
+            この投稿を削除しますか？削除すると元に戻せません。
+          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Btn
+              variant="ghost"
+              onClick={closeDeleteModal}
+              disabled={deleting}
+            >
+              キャンセル
+            </Btn>
+            <Btn
+              variant="primary"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "削除中…" : "削除する"}
             </Btn>
           </div>
         </div>

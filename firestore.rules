@@ -38,8 +38,12 @@ service cloud.firestore {
 
     // 通報
     match /reports/{reportId} {
-      // 通報者のプライバシー保護のためクライアントからの参照は禁止
-      allow read, update, delete: if false;
+      // 通報者本人のみ、自分の通報レコード ({postId}_{自分のUID}) を get できる
+      // (reportPost トランザクション内で重複チェックのために tx.get を呼ぶ)
+      // list (クエリ) は他人の通報まで列挙できてしまうので一律禁止
+      allow get: if request.auth != null
+                 && reportId.matches('.+_' + request.auth.uid);
+      allow list, update, delete: if false;
 
       // 作成: ログイン中ユーザーが、自分以外の投稿を 1 回だけ通報できる
       // doc ID は決定的に {postId}_{reporterId} とすることで重複を防ぐ
