@@ -50,5 +50,5 @@ osm-*.json
 update-station-coords.mjs
 
 # claude 
-.claude/worktree/**
+.claude/worktrees/**
 .claude/settings.local.json
