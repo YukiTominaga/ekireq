@@ -60,6 +60,9 @@ export function GoogleMapView({
           mapTypeControl={false}
           mapTypeId="roadmap"
           clickableIcons={true}
+          streetViewControl={false}
+          panControl={false}
+          fullscreenControl={false}
           style={{ width: "100%", height: "100%" }}
         >
           <MapClickListener stations={stations} onSelect={onSelect} />
