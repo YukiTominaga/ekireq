@@ -52,7 +52,7 @@ export function getFirebase() {
     ensureConfigured();
     _app = getApps()[0] ?? initializeApp(config);
     _auth = getAuth(_app);
-    _db = getFirestore(_app);
+    _db = getFirestore(_app, "ekireq");
 
     if (useEmulator && !_emulatorConnected) {
       connectAuthEmulator(_auth, "http://127.0.0.1:9099", {

@@ -48,3 +48,7 @@ next-env.d.ts
 *.log
 osm-*.json
 update-station-coords.mjs
+
+# claude 
+.claude/worktree/**
+.claude/settings.local.json
