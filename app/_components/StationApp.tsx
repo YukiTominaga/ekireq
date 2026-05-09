@@ -66,7 +66,10 @@ export function StationApp() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 14px",
+          paddingTop: "calc(12px + env(safe-area-inset-top))",
+          paddingRight: "calc(14px + env(safe-area-inset-right))",
+          paddingBottom: 12,
+          paddingLeft: "calc(14px + env(safe-area-inset-left))",
           borderBottom: `1px solid ${C.slate200}`,
           background: C.white,
         }}

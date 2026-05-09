@@ -23,6 +23,9 @@ export function BottomNav({ active, onChange }: Props) {
         display: "flex",
         borderTop: `1px solid ${C.slate200}`,
         background: C.white,
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
       }}
     >
       {TABS.map((t) => (
