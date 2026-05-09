@@ -54,8 +54,8 @@ export function StationApp() {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100dvh",
-        maxHeight: "100dvh",
+        height: "100%",
+        maxHeight: "100%",
         overflow: "hidden",
         background: C.white,
       }}
