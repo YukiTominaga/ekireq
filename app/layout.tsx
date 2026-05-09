@@ -47,7 +47,6 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: "cover",
   themeColor: "#0f172a",
 };
 
@@ -58,8 +57,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-dvh bg-slate-200 flex justify-center">
-        <div className="w-full max-w-[390px] bg-white shadow-xl flex flex-col min-h-dvh">
+      <body className="h-full bg-slate-200 flex justify-center overflow-hidden">
+        <div className="w-full max-w-[390px] h-full bg-white shadow-xl flex flex-col">
           {children}
         </div>
         <ServiceWorkerRegister />
