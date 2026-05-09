@@ -19,10 +19,22 @@ service cloud.firestore {
                     && request.resource.data.categories is list
                     && request.resource.data.categories.size() <= 12;
 
-      // 更新: ログイン中のユーザーが「いいね」操作 (likedBy / likesCount) または通報集計 (reportsCount) を行う場合のみ
+      // 更新:
+      //  - ログイン中のユーザーが「いいね」操作 (likedBy / likesCount) または通報集計 (reportsCount) を行う場合
+      //  - 投稿者本人がユーザー名 (userName) を編集する場合 (1〜60 byte)
       allow update: if request.auth != null
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['likedBy', 'likesCount', 'reportsCount']);
+                    && (
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['likedBy', 'likesCount', 'reportsCount'])
+                      || (
+                        resource.data.userId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['userName'])
+                        && request.resource.data.userName is string
+                        && request.resource.data.userName.size() > 0
+                        && request.resource.data.userName.size() <= 60
+                      )
+                    );
 
       // 削除: 投稿者本人のみ
       allow delete: if request.auth != null
