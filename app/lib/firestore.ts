@@ -45,7 +45,7 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["code"];
 
-function mapDocToPost(d: QueryDocumentSnapshot): Post {
+export function mapDocToPost(d: QueryDocumentSnapshot): Post {
   const data = d.data();
   return {
     id: d.id,

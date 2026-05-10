@@ -160,6 +160,16 @@ describe("getUniqueStations", () => {
   });
 });
 
+describe("memoization", () => {
+  it("returns the same getAllStations array reference across calls", () => {
+    expect(getAllStations()).toBe(getAllStations());
+  });
+
+  it("returns the same getUniqueStations array reference across calls", () => {
+    expect(getUniqueStations()).toBe(getUniqueStations());
+  });
+});
+
 describe("CATEGORIES", () => {
   it("exposes a non-empty list of unique labels", () => {
     expect(CATEGORIES.length).toBeGreaterThan(0);
