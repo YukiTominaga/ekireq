@@ -4659,7 +4659,13 @@ export function stationKey(prefecture: string, stationName: string): string {
   return `${prefecture}:${stationName}`;
 }
 
+// 駅メタデータは静的データから一意に決まるため、初回呼び出し時のみ構築して
+// 以降は同じ参照を返す。返却配列は呼び出し側で mutate しないこと。
+let _allStations: StationWithMeta[] | null = null;
+let _uniqueStations: StationWithMeta[] | null = null;
+
 export function getAllStations(): StationWithMeta[] {
+  if (_allStations) return _allStations;
   const result: StationWithMeta[] = [];
   for (const pref of PREFECTURES) {
     const lines = STATION_DATA[pref];
@@ -4674,10 +4680,12 @@ export function getAllStations(): StationWithMeta[] {
       }
     }
   }
-  return result;
+  _allStations = result;
+  return _allStations;
 }
 
 export function getUniqueStations(): StationWithMeta[] {
+  if (_uniqueStations) return _uniqueStations;
   const seen = new Set<string>();
   const result: StationWithMeta[] = [];
   for (const stn of getAllStations()) {
@@ -4686,5 +4694,6 @@ export function getUniqueStations(): StationWithMeta[] {
       result.push(stn);
     }
   }
-  return result;
+  _uniqueStations = result;
+  return _uniqueStations;
 }

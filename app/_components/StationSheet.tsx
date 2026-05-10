@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { C } from "@/app/lib/tokens";
 import { CATEGORIES, type StationWithMeta } from "@/app/lib/stations";
@@ -16,8 +16,10 @@ import {
   type ReportReason,
 } from "@/app/lib/firestore";
 import { formatTime } from "@/app/lib/format";
-import { Btn, Badge } from "./ui";
+import { Btn, Badge, PillButton } from "./ui";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
+import { UserAvatar } from "./UserAvatar";
 
 type Props = {
   station: StationWithMeta;
@@ -48,10 +50,11 @@ export function StationSheet({
     return subscribePosts(station.key, setPosts);
   }, [station.key]);
 
-  const filtered =
-    filterCats.length === 0
-      ? posts
-      : posts.filter((p) => p.categories.some((c) => filterCats.includes(c)));
+  const filtered = useMemo(() => {
+    if (filterCats.length === 0) return posts;
+    const set = new Set(filterCats);
+    return posts.filter((p) => p.categories.some((c) => set.has(c)));
+  }, [posts, filterCats]);
 
   async function handleToggleLike(post: Post) {
     if (!user) {
@@ -391,39 +394,13 @@ export function StationSheet({
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
-                    <div
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: "50%",
-                        background: C.slate200,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: C.slate600,
-                        overflow: "hidden",
-                      }}
-                    >
-                      {post.userPhotoURL ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={post.userPhotoURL}
-                          alt=""
-                          width={26}
-                          height={26}
-                          referrerPolicy="no-referrer"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        (post.userName[0] ?? "?")
-                      )}
-                    </div>
+                    <UserAvatar
+                      photoURL={post.userPhotoURL}
+                      fallback={post.userName[0] ?? "?"}
+                      size={26}
+                      fontSize={11}
+                      referrerPolicy="no-referrer"
+                    />
                     <span
                       style={{
                         fontSize: 12,
@@ -484,87 +461,36 @@ export function StationSheet({
                     gap: 6,
                   }}
                 >
-                  <button
-                    onClick={() => handleToggleLike(post)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: liked ? C.red50 : C.slate50,
-                      border: `1px solid ${liked ? C.red200 : C.slate200}`,
-                      color: liked ? C.red500 : C.slate500,
-                      borderRadius: 20,
-                      padding: "3px 10px",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
+                  <PillButton
+                    icon="heart"
+                    active={liked}
+                    activeColors={{
+                      bg: C.red50,
+                      border: C.red200,
+                      fg: C.red500,
+                      iconFill: C.red500,
                     }}
+                    onClick={() => handleToggleLike(post)}
                   >
-                    <Icon
-                      name="heart"
-                      size={12}
-                      sw={liked ? 0 : 1.5}
-                      color={liked ? C.red500 : C.slate400}
-                      fill={liked ? C.red500 : "none"}
-                    />
                     {post.likesCount}
-                  </button>
+                  </PillButton>
                   {post.userId !== user?.uid && (
-                    <button
+                    <PillButton
+                      icon="flag"
+                      ariaLabel="この投稿を通報"
                       onClick={() => handleReportClick(post)}
-                      aria-label="この投稿を通報"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        background: C.slate50,
-                        border: `1px solid ${C.slate200}`,
-                        color: C.slate500,
-                        borderRadius: 20,
-                        padding: "3px 10px",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
                     >
-                      <Icon
-                        name="flag"
-                        size={12}
-                        sw={1.5}
-                        color={C.slate400}
-                      />
                       {post.reportsCount}
-                    </button>
+                    </PillButton>
                   )}
                   {post.userId === user?.uid && (
-                    <button
+                    <PillButton
+                      icon="trash"
+                      ariaLabel="この投稿を削除"
                       onClick={() => setDeleteTarget(post)}
-                      aria-label="この投稿を削除"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        background: C.slate50,
-                        border: `1px solid ${C.slate200}`,
-                        color: C.slate500,
-                        borderRadius: 20,
-                        padding: "3px 10px",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
                     >
-                      <Icon
-                        name="trash"
-                        size={12}
-                        sw={1.5}
-                        color={C.slate400}
-                      />
                       削除
-                    </button>
+                    </PillButton>
                   )}
                 </div>
               </div>
@@ -681,82 +607,18 @@ export function StationSheet({
         </div>
       </div>
     )}
-    {deleteTarget && (
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <div
-          onClick={closeDeleteModal}
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-          }}
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-modal-title"
-          style={{
-            position: "relative",
-            background: C.white,
-            borderRadius: 14,
-            width: "100%",
-            maxWidth: 360,
-            padding: 18,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          <h3
-            id="delete-modal-title"
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: C.slate900,
-            }}
-          >
-            投稿を削除
-          </h3>
-          <p style={{ fontSize: 13, color: C.slate600, lineHeight: 1.6 }}>
-            この投稿を削除しますか？削除すると元に戻せません。
-          </p>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Btn
-              variant="ghost"
-              onClick={closeDeleteModal}
-              disabled={deleting}
-            >
-              キャンセル
-            </Btn>
-            <Btn
-              variant="primary"
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-            >
-              {deleting ? "削除中…" : "削除する"}
-            </Btn>
-          </div>
-        </div>
-      </div>
-    )}
+    <ConfirmDialog
+      open={!!deleteTarget}
+      title="投稿を削除"
+      body="この投稿を削除しますか？削除すると元に戻せません。"
+      confirmLabel="削除する"
+      confirmingLabel="削除中…"
+      busy={deleting}
+      position="absolute"
+      labelledById="delete-modal-title"
+      onCancel={closeDeleteModal}
+      onConfirm={handleConfirmDelete}
+    />
     </>
   );
 }

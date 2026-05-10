@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { C } from "@/app/lib/tokens";
+import { Icon } from "./Icon";
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "outline";
 type BtnSize = "sm" | "md";
@@ -84,6 +85,62 @@ export function Badge({ children, active, onClick }: BadgeProps) {
         fontFamily: "inherit",
       }}
     >
+      {children}
+    </button>
+  );
+}
+
+type PillButtonColors = {
+  bg: string;
+  border: string;
+  fg: string;
+  iconFill?: string;
+};
+
+type PillButtonProps = {
+  icon: string;
+  children?: ReactNode;
+  active?: boolean;
+  activeColors?: PillButtonColors;
+  ariaLabel?: string;
+  onClick?: () => void;
+};
+
+export function PillButton({
+  icon,
+  children,
+  active = false,
+  activeColors,
+  ariaLabel,
+  onClick,
+}: PillButtonProps) {
+  const isActive = active && !!activeColors;
+  const bg = isActive ? activeColors!.bg : C.slate50;
+  const border = isActive ? activeColors!.border : C.slate200;
+  const fg = isActive ? activeColors!.fg : C.slate500;
+  const iconColor = isActive ? activeColors!.fg : C.slate400;
+  const iconFill = isActive ? (activeColors!.iconFill ?? "none") : "none";
+  const sw = isActive && activeColors!.iconFill ? 0 : 1.5;
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background: bg,
+        border: `1px solid ${border}`,
+        color: fg,
+        borderRadius: 20,
+        padding: "3px 10px",
+        fontSize: 12,
+        fontWeight: 500,
+        cursor: "pointer",
+        fontFamily: "inherit",
+      }}
+    >
+      <Icon name={icon} size={12} sw={sw} color={iconColor} fill={iconFill} />
       {children}
     </button>
   );

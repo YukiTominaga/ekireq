@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import { useAuth, signOut } from "@/app/lib/auth";
 import { subscribeStationCounts } from "@/app/lib/firestore";
 import { getUniqueStations, type StationWithMeta } from "@/app/lib/stations";
 import { Btn } from "./ui";
 import { Icon } from "./Icon";
+import { UserAvatar } from "./UserAvatar";
 import { GoogleMapView } from "./GoogleMapView";
 import { StationSheet } from "./StationSheet";
 import { StationListView } from "./StationListView";
@@ -29,25 +30,34 @@ export function StationApp() {
     return subscribeStationCounts(setCounts);
   }, []);
 
-  function handleSelect(stn: StationWithMeta) {
+  const handleSelect = useCallback((stn: StationWithMeta) => {
     setSelected(stn);
-  }
+  }, []);
 
-  function handleLoginRequest() {
+  const handleLoginRequest = useCallback(() => {
     setShowAuth(true);
-  }
+  }, []);
 
-  function handleAuthSuccess() {
+  const handleAuthSuccess = useCallback(() => {
     setShowAuth(false);
-  }
+  }, []);
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     try {
       await signOut();
     } catch (e) {
       console.error(e);
     }
-  }
+  }, []);
+
+  const handleTabChange = useCallback((t: Tab) => {
+    setTab(t);
+    if (t !== "map") setSelected(null);
+  }, []);
+
+  const handleCloseSelected = useCallback(() => setSelected(null), []);
+  const handleCloseAuth = useCallback(() => setShowAuth(false), []);
+  const handleOpenMyPage = useCallback(() => setTab("mypage"), []);
 
   return (
     <div
@@ -88,34 +98,25 @@ export function StationApp() {
           )}
           {ready && user && (
             <button
-              onClick={() => setTab("mypage")}
+              onClick={handleOpenMyPage}
               style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                background: C.slate900,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 700,
-                color: C.white,
-                cursor: "pointer",
+                background: "none",
                 border: "none",
-                overflow: "hidden",
                 padding: 0,
+                cursor: "pointer",
               }}
             >
-              {user.photoURL ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.photoURL}
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                (user.displayName || user.email || "U")[0]?.toUpperCase()
-              )}
+              <UserAvatar
+                photoURL={user.photoURL}
+                fallback={
+                  (user.displayName || user.email || "U")[0]?.toUpperCase() ??
+                  "U"
+                }
+                size={30}
+                bg={C.slate900}
+                fg={C.white}
+                fontSize={12}
+              />
             </button>
           )}
         </div>
@@ -207,26 +208,17 @@ export function StationApp() {
           <StationSheet
             station={selected}
             user={user}
-            onClose={() => setSelected(null)}
+            onClose={handleCloseSelected}
             onLoginRequest={handleLoginRequest}
           />
         )}
 
         {showAuth && (
-          <AuthModal
-            onClose={() => setShowAuth(false)}
-            onSuccess={handleAuthSuccess}
-          />
+          <AuthModal onClose={handleCloseAuth} onSuccess={handleAuthSuccess} />
         )}
       </div>
 
-      <BottomNav
-        active={tab}
-        onChange={(t) => {
-          setTab(t);
-          if (t !== "map") setSelected(null);
-        }}
-      />
+      <BottomNav active={tab} onChange={handleTabChange} />
     </div>
   );
 }

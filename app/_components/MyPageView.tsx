@@ -6,8 +6,10 @@ import { C } from "@/app/lib/tokens";
 import { deletePost, subscribeMyPosts, type Post } from "@/app/lib/firestore";
 import { getUniqueStations, type StationWithMeta } from "@/app/lib/stations";
 import { formatTime } from "@/app/lib/format";
-import { Btn } from "./ui";
+import { Btn, PillButton } from "./ui";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
+import { UserAvatar } from "./UserAvatar";
 
 type Props = {
   user: User | null;
@@ -160,34 +162,14 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 46,
-              height: 46,
-              borderRadius: "50%",
-              background: C.slate900,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 16,
-              fontWeight: 700,
-              color: C.white,
-              overflow: "hidden",
-            }}
-          >
-            {user.photoURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.photoURL}
-                alt=""
-                width={46}
-                height={46}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              initial
-            )}
-          </div>
+          <UserAvatar
+            photoURL={user.photoURL}
+            fallback={initial ?? "U"}
+            size={46}
+            bg={C.slate900}
+            fg={C.white}
+            fontSize={16}
+          />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <p style={{ fontWeight: 600, fontSize: 15 }}>
@@ -408,32 +390,13 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
                             }}
                           >
                             {post.userId === user.uid && (
-                              <button
+                              <PillButton
+                                icon="trash"
+                                ariaLabel="この投稿を削除"
                                 onClick={() => setDeleteTarget(post)}
-                                aria-label="この投稿を削除"
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                  background: C.slate50,
-                                  border: `1px solid ${C.slate200}`,
-                                  color: C.slate500,
-                                  borderRadius: 20,
-                                  padding: "3px 10px",
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  cursor: "pointer",
-                                  fontFamily: "inherit",
-                                }}
                               >
-                                <Icon
-                                  name="trash"
-                                  size={12}
-                                  sw={1.5}
-                                  color={C.slate400}
-                                />
                                 削除
-                              </button>
+                              </PillButton>
                             )}
                             <span style={{ fontSize: 11, color: C.slate400 }}>
                               {formatTime(post.createdAt)}
@@ -454,82 +417,18 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
         ログアウト
       </Btn>
     </div>
-    {deleteTarget && (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <div
-          onClick={closeDeleteModal}
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-          }}
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mypage-delete-modal-title"
-          style={{
-            position: "relative",
-            background: C.white,
-            borderRadius: 14,
-            width: "100%",
-            maxWidth: 360,
-            padding: 18,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          <h3
-            id="mypage-delete-modal-title"
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: C.slate900,
-            }}
-          >
-            投稿を削除
-          </h3>
-          <p style={{ fontSize: 13, color: C.slate600, lineHeight: 1.6 }}>
-            この投稿を削除しますか？削除すると元に戻せません。
-          </p>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Btn
-              variant="ghost"
-              onClick={closeDeleteModal}
-              disabled={deleting}
-            >
-              キャンセル
-            </Btn>
-            <Btn
-              variant="primary"
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-            >
-              {deleting ? "削除中…" : "削除する"}
-            </Btn>
-          </div>
-        </div>
-      </div>
-    )}
+    <ConfirmDialog
+      open={!!deleteTarget}
+      title="投稿を削除"
+      body="この投稿を削除しますか？削除すると元に戻せません。"
+      confirmLabel="削除する"
+      confirmingLabel="削除中…"
+      busy={deleting}
+      position="fixed"
+      labelledById="mypage-delete-modal-title"
+      onCancel={closeDeleteModal}
+      onConfirm={handleConfirmDelete}
+    />
     </>
   );
 }

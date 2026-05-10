@@ -245,15 +245,26 @@ function Lines({
   const [openLine, setOpenLine] = useState<string | null>(null);
   const lines = Object.keys(STATION_DATA[pref] ?? {});
 
+  const totals = useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const line of lines) {
+      let sum = 0;
+      for (const stn of STATION_DATA[pref][line]) {
+        sum += counts[stationKey(pref, stn.name)] ?? 0;
+      }
+      out[line] = sum;
+    }
+    return out;
+    // lines は STATION_DATA[pref] から導出される静的データなので依存に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pref, counts]);
+
   return (
     <>
       {lines.map((line) => {
         const stations = STATION_DATA[pref][line];
         const isOpen = openLine === line;
-        const total = stations.reduce(
-          (s, stn) => s + (counts[stationKey(pref, stn.name)] ?? 0),
-          0,
-        );
+        const total = totals[line] ?? 0;
         return (
           <div key={line} style={{ borderBottom: `1px solid ${C.slate100}` }}>
             <button
