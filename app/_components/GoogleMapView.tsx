@@ -139,6 +139,10 @@ function ClusteredStationMarkers({
   useEffect(() => {
     countsRef.current = counts;
   }, [counts]);
+  const markersRef = useRef(markers);
+  useEffect(() => {
+    markersRef.current = markers;
+  }, [markers]);
 
   useEffect(() => {
     if (!map) return;
@@ -188,12 +192,25 @@ function ClusteredStationMarkers({
     };
   }, [map]);
 
+  // markers が変わったとき: 即座にクラスタを再構築
   useEffect(() => {
     const clusterer = clustererRef.current;
     if (!clusterer) return;
     clusterer.clearMarkers();
     clusterer.addMarkers(Object.values(markers));
-  }, [markers, counts]);
+  }, [markers]);
+
+  // counts が変わったとき: バッジ数値を更新するために再クラスタが必要だが、
+  // 連続的な onSnapshot 通知で全マーカー再登録を繰り返さないよう debounce する。
+  useEffect(() => {
+    const clusterer = clustererRef.current;
+    if (!clusterer) return;
+    const id = window.setTimeout(() => {
+      clusterer.clearMarkers();
+      clusterer.addMarkers(Object.values(markersRef.current));
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [counts]);
 
   const markerRefs = useMemo(() => {
     const cache: Record<

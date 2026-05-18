@@ -10,6 +10,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  type QueryDocumentSnapshot,
   runTransaction,
   serverTimestamp,
   Timestamp,
@@ -45,6 +46,25 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["code"];
 
+export function mapDocToPost(d: QueryDocumentSnapshot): Post {
+  const data = d.data();
+  return {
+    id: d.id,
+    stationKey: data.stationKey,
+    stationName: data.stationName,
+    prefecture: data.prefecture,
+    userId: data.userId,
+    userName: data.userName,
+    userPhotoURL: data.userPhotoURL ?? null,
+    text: data.text,
+    categories: data.categories ?? [],
+    likesCount: data.likesCount ?? 0,
+    likedBy: data.likedBy ?? [],
+    reportsCount: data.reportsCount ?? 0,
+    createdAt: data.createdAt ?? null,
+  };
+}
+
 export function subscribePosts(
   stationKey: string,
   cb: (posts: Post[]) => void,
@@ -56,26 +76,7 @@ export function subscribePosts(
     orderBy("createdAt", "desc"),
   );
   return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          stationKey: data.stationKey,
-          stationName: data.stationName,
-          prefecture: data.prefecture,
-          userId: data.userId,
-          userName: data.userName,
-          userPhotoURL: data.userPhotoURL ?? null,
-          text: data.text,
-          categories: data.categories ?? [],
-          likesCount: data.likesCount ?? 0,
-          likedBy: data.likedBy ?? [],
-          reportsCount: data.reportsCount ?? 0,
-          createdAt: data.createdAt ?? null,
-        };
-      }),
-    );
+    cb(snap.docs.map(mapDocToPost));
   });
 }
 
@@ -87,24 +88,7 @@ export function subscribeMyPosts(
   // orderBy は付けず、複合インデックス追加を避けてクライアント側でソートする
   const q = query(collection(db, "posts"), where("userId", "==", userId));
   return onSnapshot(q, (snap) => {
-    const posts = snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        stationKey: data.stationKey,
-        stationName: data.stationName,
-        prefecture: data.prefecture,
-        userId: data.userId,
-        userName: data.userName,
-        userPhotoURL: data.userPhotoURL ?? null,
-        text: data.text,
-        categories: data.categories ?? [],
-        likesCount: data.likesCount ?? 0,
-        likedBy: data.likedBy ?? [],
-        reportsCount: data.reportsCount ?? 0,
-        createdAt: data.createdAt ?? null,
-      } as Post;
-    });
+    const posts = snap.docs.map(mapDocToPost);
     posts.sort((a, b) => {
       const ta = a.createdAt?.toMillis() ?? 0;
       const tb = b.createdAt?.toMillis() ?? 0;
