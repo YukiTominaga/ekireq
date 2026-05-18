@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Download,
   Flag,
   Heart,
   LogIn,
@@ -38,6 +39,7 @@ const ICONS: Record<string, LucideIcon> = {
   "user-circle": UserCircle,
   "log-in": LogIn,
   search: Search,
+  download: Download,
 };
 
 export type IconName = keyof typeof ICONS;

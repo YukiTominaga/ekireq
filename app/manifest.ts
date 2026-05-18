@@ -9,6 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "駅リク",
     description: "駅周辺に欲しい施設をリクエストできるアプリ",
     lang: "ja",
+    id: `${BASE_PATH}/`,
     start_url: `${BASE_PATH}/`,
     scope: `${BASE_PATH}/`,
     display: "standalone",

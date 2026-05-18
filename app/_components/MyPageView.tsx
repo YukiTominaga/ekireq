@@ -15,6 +15,7 @@ import { formatTime } from "@/app/lib/format";
 import { Btn, PillButton } from "./ui";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
+import { InstallCard } from "./InstallCard";
 import { UserAvatar } from "./UserAvatar";
 
 const NAME_MAX_LENGTH = 20;
@@ -255,6 +256,8 @@ export function MyPageView({
           </PillButton>
         </div>
       </div>
+
+      <InstallCard />
 
       <div
         style={{
