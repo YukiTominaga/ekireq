@@ -5,8 +5,8 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "駅周辺リクエスト",
-    short_name: "駅リクエスト",
+    name: "駅リク",
+    short_name: "駅リク",
     description: "駅周辺に欲しい施設をリクエストできるアプリ",
     lang: "ja",
     start_url: `${BASE_PATH}/`,

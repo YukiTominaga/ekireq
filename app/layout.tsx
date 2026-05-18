@@ -11,9 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "駅周辺リクエスト",
+  title: "駅リク",
   description: "駅周辺に欲しい施設をリクエストできるアプリ",
-  applicationName: "駅周辺リクエスト",
+  applicationName: "駅リク",
   icons: {
     icon: [
       { url: `${BASE_PATH}/favicon.ico`, sizes: "any" },
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "駅リクエスト",
+    title: "駅リク",
     statusBarStyle: "default",
   },
 };
