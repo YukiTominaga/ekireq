@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
   signOut as fbSignOut,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { getFirebase } from "./firebase";
@@ -14,6 +15,9 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // updateProfile() は auth.currentUser をその場で mutate するが
+  // onAuthStateChanged は発火しないため、明示的に再レンダーを促すためのカウンタ
+  const [, forceUpdate] = useReducer((s: number) => s + 1, 0);
 
   useEffect(() => {
     const { auth } = getFirebase();
@@ -34,7 +38,11 @@ export function useAuth() {
     });
   }, []);
 
-  return { user, ready, isAdmin };
+  const refreshUser = useCallback(() => {
+    forceUpdate();
+  }, []);
+
+  return { user, ready, isAdmin, refreshUser };
 }
 
 export async function signInWithGoogle() {
@@ -45,4 +53,12 @@ export async function signInWithGoogle() {
 export async function signOut() {
   const { auth } = getFirebase();
   return fbSignOut(auth);
+}
+
+export async function updateUserDisplayName(displayName: string) {
+  const { auth } = getFirebase();
+  if (!auth.currentUser) {
+    throw new Error("ログインしていません");
+  }
+  await updateProfile(auth.currentUser, { displayName });
 }

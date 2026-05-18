@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { C } from "@/app/lib/tokens";
-import { deletePost, subscribeMyPosts, type Post } from "@/app/lib/firestore";
+import { updateUserDisplayName } from "@/app/lib/auth";
+import {
+  deletePost,
+  subscribeMyPosts,
+  updateMyPostsUserName,
+  type Post,
+} from "@/app/lib/firestore";
 import { getUniqueStations, type StationWithMeta } from "@/app/lib/stations";
 import { formatTime } from "@/app/lib/format";
 import { Btn, PillButton } from "./ui";
@@ -11,11 +17,14 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { UserAvatar } from "./UserAvatar";
 
+const NAME_MAX_LENGTH = 20;
+
 type Props = {
   user: User | null;
   isAdmin: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  onRefreshUser: () => void;
 };
 
 type StationGroup = {
@@ -27,11 +36,20 @@ type StationGroup = {
   latestMs: number;
 };
 
-export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
+export function MyPageView({
+  user,
+  isAdmin,
+  onLogin,
+  onLogout,
+  onRefreshUser,
+}: Props) {
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -90,6 +108,39 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
       alert("削除に失敗しました");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openEditName() {
+    if (!user) return;
+    setNameInput(user.displayName ?? "");
+    setEditingName(true);
+  }
+
+  function closeEditName() {
+    if (savingName) return;
+    setEditingName(false);
+  }
+
+  async function handleSaveName() {
+    if (!user || savingName) return;
+    const trimmed = nameInput.trim();
+    if (trimmed.length === 0 || trimmed.length > NAME_MAX_LENGTH) return;
+    if (trimmed === (user.displayName ?? "")) {
+      setEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateUserDisplayName(trimmed);
+      await updateMyPostsUserName(user.uid, trimmed);
+      onRefreshUser();
+      setEditingName(false);
+    } catch (e) {
+      console.error(e);
+      alert("名前の変更に失敗しました");
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -170,7 +221,7 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
             fg={C.white}
             fontSize={16}
           />
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <p style={{ fontWeight: 600, fontSize: 15 }}>
                 {user.displayName || "ユーザー"}
@@ -195,6 +246,28 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
               {user.email ?? ""}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={openEditName}
+            aria-label="ユーザー名を編集"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              background: C.slate50,
+              border: `1px solid ${C.slate200}`,
+              color: C.slate600,
+              borderRadius: 20,
+              padding: "5px 12px",
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            <Icon name="pencil" size={12} sw={1.8} color={C.slate500} />
+            編集
+          </button>
         </div>
       </div>
 
@@ -429,6 +502,116 @@ export function MyPageView({ user, isAdmin, onLogin, onLogout }: Props) {
       onCancel={closeDeleteModal}
       onConfirm={handleConfirmDelete}
     />
+    {editingName && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        }}
+      >
+        <div
+          onClick={closeEditName}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(15,23,42,0.45)",
+          }}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mypage-edit-name-title"
+          style={{
+            position: "relative",
+            background: C.white,
+            borderRadius: 14,
+            width: "100%",
+            maxWidth: 360,
+            padding: 18,
+            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <h3
+            id="mypage-edit-name-title"
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: C.slate900,
+            }}
+          >
+            ユーザー名を変更
+          </h3>
+          <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
+            変更するとあなたの過去の投稿の表示名も新しい名前になります。
+          </p>
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            maxLength={NAME_MAX_LENGTH}
+            placeholder="ユーザー名"
+            disabled={savingName}
+            autoFocus
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              fontSize: 14,
+              borderRadius: 8,
+              border: `1px solid ${C.slate200}`,
+              background: C.white,
+              color: C.slate900,
+              fontFamily: "inherit",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          <div
+            style={{
+              fontSize: 11,
+              color: C.slate400,
+              textAlign: "right",
+            }}
+          >
+            {nameInput.trim().length} / {NAME_MAX_LENGTH}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Btn
+              variant="ghost"
+              onClick={closeEditName}
+              disabled={savingName}
+            >
+              キャンセル
+            </Btn>
+            <Btn
+              variant="primary"
+              onClick={handleSaveName}
+              disabled={
+                savingName ||
+                nameInput.trim().length === 0 ||
+                nameInput.trim() === (user.displayName ?? "")
+              }
+            >
+              {savingName ? "保存中…" : "保存"}
+            </Btn>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

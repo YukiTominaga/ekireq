@@ -5,6 +5,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -202,6 +203,20 @@ export async function reportPost(args: {
     });
     tx.update(postRef, { reportsCount: increment(1) });
   });
+}
+
+export async function updateMyPostsUserName(
+  userId: string,
+  newName: string,
+): Promise<number> {
+  const { db } = getFirebase();
+  const q = query(collection(db, "posts"), where("userId", "==", userId));
+  const snap = await getDocs(q);
+  if (snap.empty) return 0;
+  const batch = writeBatch(db);
+  snap.forEach((d) => batch.update(d.ref, { userName: newName }));
+  await batch.commit();
+  return snap.size;
 }
 
 export function subscribeStationCounts(
