@@ -246,28 +246,13 @@ export function MyPageView({
               {user.email ?? ""}
             </p>
           </div>
-          <button
-            type="button"
+          <PillButton
+            icon="pencil"
+            ariaLabel="ユーザー名を編集"
             onClick={openEditName}
-            aria-label="ユーザー名を編集"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              background: C.slate50,
-              border: `1px solid ${C.slate200}`,
-              color: C.slate600,
-              borderRadius: 20,
-              padding: "5px 12px",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
           >
-            <Icon name="pencil" size={12} sw={1.8} color={C.slate500} />
             編集
-          </button>
+          </PillButton>
         </div>
       </div>
 
