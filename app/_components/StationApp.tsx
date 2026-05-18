@@ -15,7 +15,7 @@ import { AuthModal } from "./AuthModal";
 import { BottomNav, type Tab } from "./BottomNav";
 
 export function StationApp() {
-  const { user, ready, isAdmin } = useAuth();
+  const { user, ready, isAdmin, refreshUser } = useAuth();
   const [tab, setTab] = useState<Tab>("map");
   const [selected, setSelected] = useState<StationWithMeta | null>(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -199,6 +199,7 @@ export function StationApp() {
               isAdmin={isAdmin}
               onLogin={handleLoginRequest}
               onLogout={handleLogout}
+              onRefreshUser={refreshUser}
             />
           </div>
         )}
