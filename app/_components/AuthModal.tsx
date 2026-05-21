@@ -4,10 +4,6 @@ import { useState } from "react";
 import { C } from "@/app/lib/tokens";
 import { signInWithGoogle } from "@/app/lib/auth";
 import { Btn } from "./ui";
-import {
-  handleDialogBackdropClick,
-  useModalDialog,
-} from "./useModalDialog";
 
 type Props = {
   onClose: () => void;
@@ -17,7 +13,6 @@ type Props = {
 export function AuthModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ref = useModalDialog();
 
   async function handleGoogle() {
     setLoading(true);
@@ -35,13 +30,36 @@ export function AuthModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <dialog
-      ref={ref}
-      aria-labelledby="auth-modal-title"
-      onCancel={onClose}
-      onClick={(e) => handleDialogBackdropClick(e, onClose)}
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 80,
+        display: "flex",
+        alignItems: "flex-end",
+      }}
     >
-      <div className="dlg-sheet dlg-sheet--auth">
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(15,23,42,0.4)",
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+        style={{
+          position: "relative",
+          background: C.white,
+          borderRadius: "16px 16px 0 0",
+          width: "100%",
+          padding: "0 18px 36px",
+          animation: "slideUp 0.28s ease-out",
+        }}
+      >
         <div
           style={{
             width: 36,
@@ -91,7 +109,7 @@ export function AuthModal({ onClose, onSuccess }: Props) {
           </p>
         )}
       </div>
-    </dialog>
+    </div>
   );
 }
 

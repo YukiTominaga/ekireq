@@ -23,47 +23,6 @@ body {
   display: none;
 }
 
-/* native <dialog> の既定 padding/border/background をリセットし、
-   個別のスタイルを当てやすくする (showModal() 時のみ適用) */
-dialog[open] {
-  padding: 0;
-  border: none;
-  background: transparent;
-  max-width: 100vw;
-  max-height: 100vh;
-}
-dialog::backdrop {
-  background: rgba(15, 23, 42, 0.4);
-}
-
-/* センター配置のダイアログ (確認ダイアログ等) */
-.dlg-center {
-  width: min(360px, calc(100vw - 32px));
-  margin: auto;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
-  padding: 18px;
-}
-
-/* ボトムシート (アプリシェル 390px に合わせて中央寄せ) */
-.dlg-sheet {
-  width: min(100vw, 390px);
-  max-height: 78vh;
-  margin: auto auto 0;
-  border-radius: 16px 16px 0 0;
-  background: #fff;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
-  animation: slideUp 0.28s ease-out;
-  display: flex;
-  flex-direction: column;
-}
-
-.dlg-sheet--auth {
-  max-height: none;
-  padding: 0 18px 36px;
-}
-
 @keyframes slideUp {
   from {
     transform: translateY(100%);
