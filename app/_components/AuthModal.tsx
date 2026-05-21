@@ -4,6 +4,10 @@ import { useState } from "react";
 import { C } from "@/app/lib/tokens";
 import { signInWithGoogle } from "@/app/lib/auth";
 import { Btn } from "./ui";
+import {
+  handleDialogBackdropClick,
+  useModalDialog,
+} from "./useModalDialog";
 
 type Props = {
   onClose: () => void;
@@ -13,6 +17,7 @@ type Props = {
 export function AuthModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ref = useModalDialog();
 
   async function handleGoogle() {
     setLoading(true);
@@ -30,33 +35,13 @@ export function AuthModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 80,
-        display: "flex",
-        alignItems: "flex-end",
-      }}
+    <dialog
+      ref={ref}
+      aria-labelledby="auth-modal-title"
+      onCancel={onClose}
+      onClick={(e) => handleDialogBackdropClick(e, onClose)}
     >
-      <div
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(15,23,42,0.4)",
-        }}
-      />
-      <div
-        style={{
-          position: "relative",
-          background: C.white,
-          borderRadius: "16px 16px 0 0",
-          width: "100%",
-          padding: "0 18px 36px",
-          animation: "slideUp 0.28s ease-out",
-        }}
-      >
+      <div className="dlg-sheet dlg-sheet--auth">
         <div
           style={{
             width: 36,
@@ -66,7 +51,10 @@ export function AuthModal({ onClose, onSuccess }: Props) {
             margin: "10px auto 16px",
           }}
         />
-        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>
+        <h2
+          id="auth-modal-title"
+          style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}
+        >
           ログイン
         </h2>
         <p
@@ -91,6 +79,7 @@ export function AuthModal({ onClose, onSuccess }: Props) {
 
         {error && (
           <p
+            role="alert"
             style={{
               fontSize: 11,
               color: C.red500,
@@ -102,7 +91,7 @@ export function AuthModal({ onClose, onSuccess }: Props) {
           </p>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }
 

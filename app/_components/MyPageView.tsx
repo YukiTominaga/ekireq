@@ -16,7 +16,12 @@ import { Btn, PillButton } from "./ui";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { InstallCard } from "./InstallCard";
+import { useToast } from "./Toast";
 import { UserAvatar } from "./UserAvatar";
+import {
+  handleDialogBackdropClick,
+  useModalDialog,
+} from "./useModalDialog";
 
 const NAME_MAX_LENGTH = 20;
 
@@ -54,6 +59,7 @@ export function MyPageView({
   const [stationMetaByKey, setStationMetaByKey] = useState<
     Map<string, StationWithMeta>
   >(() => new Map());
+  const showToast = useToast();
 
   useEffect(() => {
     if (!user) return;
@@ -116,7 +122,7 @@ export function MyPageView({
       setDeleteTarget(null);
     } catch (e) {
       console.error(e);
-      alert("削除に失敗しました");
+      showToast("削除に失敗しました", "error");
     } finally {
       setDeleting(false);
     }
@@ -149,7 +155,7 @@ export function MyPageView({
       setEditingName(false);
     } catch (e) {
       console.error(e);
-      alert("名前の変更に失敗しました");
+      showToast("名前の変更に失敗しました", "error");
     } finally {
       setSavingName(false);
     }
@@ -496,121 +502,128 @@ export function MyPageView({
       confirmLabel="削除する"
       confirmingLabel="削除中…"
       busy={deleting}
-      position="fixed"
       labelledById="mypage-delete-modal-title"
       onCancel={closeDeleteModal}
       onConfirm={handleConfirmDelete}
     />
     {editingName && (
+      <EditNameDialog
+        nameInput={nameInput}
+        savingName={savingName}
+        currentName={user.displayName ?? ""}
+        onChange={setNameInput}
+        onCancel={closeEditName}
+        onSave={handleSaveName}
+      />
+    )}
+    </>
+  );
+}
+
+function EditNameDialog({
+  nameInput,
+  savingName,
+  currentName,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  nameInput: string;
+  savingName: boolean;
+  currentName: string;
+  onChange: (v: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const ref = useModalDialog();
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="mypage-edit-name-title"
+      onCancel={(e) => {
+        if (savingName) {
+          e.preventDefault();
+          return;
+        }
+        onCancel();
+      }}
+      onClick={(e) => {
+        if (savingName) return;
+        handleDialogBackdropClick(e, onCancel);
+      }}
+    >
       <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
+        className="dlg-center"
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <div
-          onClick={closeEditName}
+        <h3
+          id="mypage-edit-name-title"
           style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
+            fontSize: 15,
+            fontWeight: 700,
+            color: C.slate900,
+          }}
+        >
+          ユーザー名を変更
+        </h3>
+        <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
+          変更するとあなたの過去の投稿の表示名も新しい名前になります。
+        </p>
+        <input
+          type="text"
+          value={nameInput}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={NAME_MAX_LENGTH}
+          placeholder="ユーザー名"
+          disabled={savingName}
+          autoFocus
+          aria-label="ユーザー名"
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            fontSize: 14,
+            borderRadius: 8,
+            border: `1px solid ${C.slate200}`,
+            background: C.white,
+            color: C.slate900,
+            fontFamily: "inherit",
+            outline: "none",
+            boxSizing: "border-box",
           }}
         />
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mypage-edit-name-title"
           style={{
-            position: "relative",
-            background: C.white,
-            borderRadius: 14,
-            width: "100%",
-            maxWidth: 360,
-            padding: 18,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
+            fontSize: 11,
+            color: C.slate400,
+            textAlign: "right",
           }}
         >
-          <h3
-            id="mypage-edit-name-title"
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: C.slate900,
-            }}
+          {nameInput.trim().length} / {NAME_MAX_LENGTH}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 4,
+          }}
+        >
+          <Btn variant="ghost" onClick={onCancel} disabled={savingName}>
+            キャンセル
+          </Btn>
+          <Btn
+            variant="primary"
+            onClick={onSave}
+            disabled={
+              savingName ||
+              nameInput.trim().length === 0 ||
+              nameInput.trim() === currentName
+            }
           >
-            ユーザー名を変更
-          </h3>
-          <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
-            変更するとあなたの過去の投稿の表示名も新しい名前になります。
-          </p>
-          <input
-            type="text"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            maxLength={NAME_MAX_LENGTH}
-            placeholder="ユーザー名"
-            disabled={savingName}
-            autoFocus
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              fontSize: 14,
-              borderRadius: 8,
-              border: `1px solid ${C.slate200}`,
-              background: C.white,
-              color: C.slate900,
-              fontFamily: "inherit",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-          <div
-            style={{
-              fontSize: 11,
-              color: C.slate400,
-              textAlign: "right",
-            }}
-          >
-            {nameInput.trim().length} / {NAME_MAX_LENGTH}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Btn
-              variant="ghost"
-              onClick={closeEditName}
-              disabled={savingName}
-            >
-              キャンセル
-            </Btn>
-            <Btn
-              variant="primary"
-              onClick={handleSaveName}
-              disabled={
-                savingName ||
-                nameInput.trim().length === 0 ||
-                nameInput.trim() === (user.displayName ?? "")
-              }
-            >
-              {savingName ? "保存中…" : "保存"}
-            </Btn>
-          </div>
+            {savingName ? "保存中…" : "保存"}
+          </Btn>
         </div>
       </div>
-    )}
-    </>
+    </dialog>
   );
 }

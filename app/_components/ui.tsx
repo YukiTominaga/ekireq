@@ -1,7 +1,6 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { C } from "@/app/lib/tokens";
 import { Icon } from "./Icon";
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "outline";
@@ -17,6 +16,18 @@ type BtnProps = {
   style?: CSSProperties;
 };
 
+const BTN_SIZE_CLS: Record<BtnSize, string> = {
+  sm: "text-[13px] py-1.5 px-3",
+  md: "text-sm py-2.5 px-4",
+};
+
+const BTN_VARIANT_CLS: Record<BtnVariant, string> = {
+  primary: "bg-slate-900 text-white",
+  secondary: "bg-slate-100 text-slate-900",
+  ghost: "bg-transparent text-slate-600",
+  outline: "bg-white text-slate-900 border border-slate-200",
+};
+
 export function Btn({
   children,
   variant = "primary",
@@ -24,38 +35,15 @@ export function Btn({
   onClick,
   disabled,
   type = "button",
-  style = {},
+  style,
 }: BtnProps) {
-  const base: CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 6,
-    fontWeight: 500,
-    cursor: disabled ? "not-allowed" : "pointer",
-    border: "none",
-    fontFamily: "inherit",
-    fontSize: size === "sm" ? 13 : 14,
-    padding: size === "sm" ? "6px 12px" : "10px 16px",
-    opacity: disabled ? 0.5 : 1,
-  };
-  const variants: Record<BtnVariant, CSSProperties> = {
-    primary: { background: C.slate900, color: C.white },
-    secondary: { background: C.slate100, color: C.slate900 },
-    ghost: { background: "transparent", color: C.slate600 },
-    outline: {
-      background: C.white,
-      color: C.slate900,
-      border: `1px solid ${C.slate200}`,
-    },
-  };
   return (
     <button
       type={type}
-      style={{ ...base, ...variants[variant], ...style }}
       onClick={onClick}
       disabled={disabled}
+      style={style}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-md font-medium font-[inherit] cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed ${BTN_SIZE_CLS[size]} ${BTN_VARIANT_CLS[variant]}`}
     >
       {children}
     </button>
@@ -71,37 +59,26 @@ type BadgeProps = {
 export function Badge({ children, active, onClick }: BadgeProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={{
-        padding: "4px 10px",
-        borderRadius: 20,
-        fontSize: 12,
-        fontWeight: 500,
-        border: `1px solid ${active ? C.slate900 : C.slate200}`,
-        background: active ? C.slate900 : C.white,
-        color: active ? C.white : C.slate600,
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        fontFamily: "inherit",
-      }}
+      className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium font-[inherit] cursor-pointer border ${
+        active
+          ? "bg-slate-900 text-white border-slate-900"
+          : "bg-white text-slate-600 border-slate-200"
+      }`}
     >
       {children}
     </button>
   );
 }
 
-type PillButtonColors = {
-  bg: string;
-  border: string;
-  fg: string;
-  iconFill?: string;
-};
+type PillVariant = "default" | "heart";
 
 type PillButtonProps = {
   icon: string;
   children?: ReactNode;
   active?: boolean;
-  activeColors?: PillButtonColors;
+  variant?: PillVariant;
   ariaLabel?: string;
   onClick?: () => void;
 };
@@ -110,37 +87,25 @@ export function PillButton({
   icon,
   children,
   active = false,
-  activeColors,
+  variant = "default",
   ariaLabel,
   onClick,
 }: PillButtonProps) {
-  const isActive = active && !!activeColors;
-  const bg = isActive ? activeColors!.bg : C.slate50;
-  const border = isActive ? activeColors!.border : C.slate200;
-  const fg = isActive ? activeColors!.fg : C.slate500;
-  const iconColor = isActive ? activeColors!.fg : C.slate400;
-  const iconFill = isActive ? (activeColors!.iconFill ?? "none") : "none";
-  const sw = isActive && activeColors!.iconFill ? 0 : 1.5;
+  const isHeartActive = active && variant === "heart";
+  const cls = isHeartActive
+    ? "bg-red-50 text-red-500 border-red-200"
+    : "bg-slate-50 text-slate-500 border-slate-200";
+  const iconFill = isHeartActive ? "currentColor" : "none";
+  const iconStroke = isHeartActive ? 0 : 1.5;
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        background: bg,
-        border: `1px solid ${border}`,
-        color: fg,
-        borderRadius: 20,
-        padding: "3px 10px",
-        fontSize: 12,
-        fontWeight: 500,
-        cursor: "pointer",
-        fontFamily: "inherit",
-      }}
+      aria-pressed={variant === "heart" ? active : undefined}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-xs font-medium font-[inherit] cursor-pointer border ${cls}`}
     >
-      <Icon name={icon} size={12} sw={sw} color={iconColor} fill={iconFill} />
+      <Icon name={icon} size={12} sw={iconStroke} fill={iconFill} />
       {children}
     </button>
   );

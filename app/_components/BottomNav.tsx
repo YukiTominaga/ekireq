@@ -1,6 +1,5 @@
 "use client";
 
-import { C } from "@/app/lib/tokens";
 import { Icon } from "./Icon";
 
 export type Tab = "map" | "list" | "mypage";
@@ -19,46 +18,35 @@ type Props = {
 export function BottomNav({ active, onChange }: Props) {
   return (
     <nav
+      className="flex border-t border-slate-200 bg-white"
       style={{
-        display: "flex",
-        borderTop: `1px solid ${C.slate200}`,
-        background: C.white,
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingLeft: "env(safe-area-inset-left)",
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          style={{
-            flex: 1,
-            padding: "9px 0 7px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 3,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            color: active === t.id ? C.slate900 : C.slate400,
-          }}
-        >
-          <Icon
-            name={t.icon}
-            size={21}
-            sw={active === t.id ? 2 : 1.5}
-            color={active === t.id ? C.slate900 : C.slate400}
-          />
-          <span
-            style={{ fontSize: 9, fontWeight: active === t.id ? 600 : 400 }}
+      {TABS.map((t) => {
+        const isActive = active === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onChange(t.id)}
+            aria-label={t.label}
+            aria-current={isActive ? "page" : undefined}
+            className={`flex-1 pt-2 pb-1.5 flex flex-col items-center gap-1 bg-transparent border-0 cursor-pointer font-[inherit] ${
+              isActive ? "text-slate-900" : "text-slate-400"
+            }`}
           >
-            {t.label}
-          </span>
-        </button>
-      ))}
+            <Icon name={t.icon} size={21} sw={isActive ? 2 : 1.5} />
+            <span
+              className={`text-[11px] ${isActive ? "font-semibold" : "font-normal"}`}
+            >
+              {t.label}
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

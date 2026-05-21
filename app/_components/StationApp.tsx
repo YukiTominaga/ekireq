@@ -93,8 +93,7 @@ export function StationApp() {
         background: C.white,
       }}
     >
-      {/* Header */}
-      <div
+      <header
         style={{
           display: "flex",
           alignItems: "center",
@@ -122,6 +121,7 @@ export function StationApp() {
           {ready && user && (
             <button
               onClick={handleOpenMyPage}
+              aria-label="マイページを開く"
               style={{
                 background: "none",
                 border: "none",
@@ -143,10 +143,9 @@ export function StationApp() {
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Main */}
-      <div
+      <main
         style={{
           flex: 1,
           display: "flex",
@@ -244,7 +243,7 @@ export function StationApp() {
         {showAuth && (
           <AuthModal onClose={handleCloseAuth} onSuccess={handleAuthSuccess} />
         )}
-      </div>
+      </main>
 
       <BottomNav active={tab} onChange={handleTabChange} />
     </div>

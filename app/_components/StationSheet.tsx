@@ -19,7 +19,12 @@ import { formatTime } from "@/app/lib/format";
 import { Btn, Badge, PillButton } from "./ui";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
+import { useToast } from "./Toast";
 import { UserAvatar } from "./UserAvatar";
+import {
+  handleDialogBackdropClick,
+  useModalDialog,
+} from "./useModalDialog";
 
 type Props = {
   station: StationWithMeta;
@@ -45,6 +50,7 @@ export function StationSheet({
   const [reporting, setReporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const showToast = useToast();
 
   useEffect(() => {
     return subscribePosts(station.key, setPosts);
@@ -98,7 +104,7 @@ export function StationSheet({
       setDeleteTarget(null);
     } catch (e) {
       console.error(e);
-      alert("削除に失敗しました");
+      showToast("削除に失敗しました", "error");
     } finally {
       setDeleting(false);
     }
@@ -117,9 +123,9 @@ export function StationSheet({
     } catch (e) {
       console.error(e);
       if (e instanceof AlreadyReportedError) {
-        alert("この投稿は既に通報済みです");
+        showToast("この投稿は既に通報済みです", "info");
       } else {
-        alert("通報の送信に失敗しました");
+        showToast("通報の送信に失敗しました", "error");
       }
     } finally {
       setReporting(false);
@@ -150,36 +156,7 @@ export function StationSheet({
 
   return (
     <>
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "flex-end",
-      }}
-    >
-      <div
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(15,23,42,0.35)",
-        }}
-      />
-      <div
-        style={{
-          position: "relative",
-          background: C.white,
-          borderRadius: "16px 16px 0 0",
-          width: "100%",
-          maxHeight: "78%",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.12)",
-          animation: "slideUp 0.28s ease-out",
-        }}
-      >
+    <SheetDialog onClose={onClose}>
         <div
           style={{
             width: 36,
@@ -238,11 +215,13 @@ export function StationSheet({
               )}
               <button
                 onClick={onClose}
+                aria-label="閉じる"
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  padding: 4,
+                  padding: 10,
+                  margin: -10,
                   display: "flex",
                   color: C.slate400,
                 }}
@@ -463,13 +442,9 @@ export function StationSheet({
                 >
                   <PillButton
                     icon="heart"
+                    variant="heart"
                     active={liked}
-                    activeColors={{
-                      bg: C.red50,
-                      border: C.red200,
-                      fg: C.red500,
-                      iconFill: C.red500,
-                    }}
+                    ariaLabel={liked ? "いいねを取り消す" : "いいね"}
                     onClick={() => handleToggleLike(post)}
                   >
                     {post.likesCount}
@@ -497,115 +472,15 @@ export function StationSheet({
             );
           })}
         </div>
-      </div>
-    </div>
+    </SheetDialog>
     {reportTarget && (
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <div
-          onClick={reporting ? undefined : closeReportModal}
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-          }}
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="report-modal-title"
-          style={{
-            position: "relative",
-            background: C.white,
-            borderRadius: 14,
-            width: "100%",
-            maxWidth: 360,
-            padding: 18,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          <h3
-            id="report-modal-title"
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: C.slate900,
-            }}
-          >
-            投稿を通報
-          </h3>
-          <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
-            通報の理由を選択してください。送信された通報は運営側で確認します。
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {REPORT_REASONS.map((r) => {
-              const checked = reportReason === r.code;
-              return (
-                <label
-                  key={r.code}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: `1px solid ${checked ? C.slate900 : C.slate200}`,
-                    background: checked ? C.slate100 : C.white,
-                    fontSize: 13,
-                    color: C.slate800,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="report-reason"
-                    value={r.code}
-                    checked={checked}
-                    onChange={() => setReportReason(r.code)}
-                    style={{ accentColor: C.slate900 }}
-                  />
-                  {r.label}
-                </label>
-              );
-            })}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Btn
-              variant="ghost"
-              onClick={closeReportModal}
-              disabled={reporting}
-            >
-              キャンセル
-            </Btn>
-            <Btn
-              variant="primary"
-              onClick={handleSubmitReport}
-              disabled={!reportReason || reporting}
-            >
-              {reporting ? "送信中…" : "通報する"}
-            </Btn>
-          </div>
-        </div>
-      </div>
+      <ReportDialog
+        reasonCode={reportReason}
+        reporting={reporting}
+        onPickReason={setReportReason}
+        onCancel={closeReportModal}
+        onSubmit={handleSubmitReport}
+      />
     )}
     <ConfirmDialog
       open={!!deleteTarget}
@@ -614,11 +489,132 @@ export function StationSheet({
       confirmLabel="削除する"
       confirmingLabel="削除中…"
       busy={deleting}
-      position="absolute"
       labelledById="delete-modal-title"
       onCancel={closeDeleteModal}
       onConfirm={handleConfirmDelete}
     />
     </>
+  );
+}
+
+function SheetDialog({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const ref = useModalDialog();
+  return (
+    <dialog
+      ref={ref}
+      onCancel={onClose}
+      onClick={(e) => handleDialogBackdropClick(e, onClose)}
+    >
+      <div className="dlg-sheet">{children}</div>
+    </dialog>
+  );
+}
+
+function ReportDialog({
+  reasonCode,
+  reporting,
+  onPickReason,
+  onCancel,
+  onSubmit,
+}: {
+  reasonCode: ReportReason | null;
+  reporting: boolean;
+  onPickReason: (code: ReportReason) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const ref = useModalDialog();
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="report-modal-title"
+      onCancel={(e) => {
+        if (reporting) {
+          e.preventDefault();
+          return;
+        }
+        onCancel();
+      }}
+      onClick={(e) => {
+        if (reporting) return;
+        handleDialogBackdropClick(e, onCancel);
+      }}
+    >
+      <div
+        className="dlg-center"
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <h3
+          id="report-modal-title"
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: C.slate900,
+          }}
+        >
+          投稿を通報
+        </h3>
+        <p style={{ fontSize: 12, color: C.slate500, lineHeight: 1.6 }}>
+          通報の理由を選択してください。送信された通報は運営側で確認します。
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {REPORT_REASONS.map((r) => {
+            const checked = reasonCode === r.code;
+            return (
+              <label
+                key={r.code}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${checked ? C.slate900 : C.slate200}`,
+                  background: checked ? C.slate100 : C.white,
+                  fontSize: 13,
+                  color: C.slate800,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="report-reason"
+                  value={r.code}
+                  checked={checked}
+                  onChange={() => onPickReason(r.code)}
+                  style={{ accentColor: C.slate900 }}
+                />
+                {r.label}
+              </label>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 4,
+          }}
+        >
+          <Btn variant="ghost" onClick={onCancel} disabled={reporting}>
+            キャンセル
+          </Btn>
+          <Btn
+            variant="primary"
+            onClick={onSubmit}
+            disabled={!reasonCode || reporting}
+          >
+            {reporting ? "送信中…" : "通報する"}
+          </Btn>
+        </div>
+      </div>
+    </dialog>
   );
 }

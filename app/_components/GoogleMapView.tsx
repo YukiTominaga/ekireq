@@ -330,7 +330,7 @@ function MapSearch({
       >
         <Icon name="search" size={16} color={C.slate400} />
         <input
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -338,6 +338,7 @@ function MapSearch({
             // ドロップダウンクリックを処理する余地を残す
             setTimeout(() => setFocused(false), 150);
           }}
+          aria-label="駅名で検索"
           placeholder="駅名で検索して移動"
           style={{
             flex: 1,
