@@ -64,7 +64,9 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com https://*.google.com https://maps.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
+  // Google Maps SDK は機能検出のため極小 PNG を data: URL として fetch する。
+  // connect-src に data: を含めないと CSP 違反になるので許可している。
+  "connect-src 'self' data: https://*.googleapis.com https://*.google.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
   "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
