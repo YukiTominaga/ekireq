@@ -13,7 +13,13 @@ body {
   color: #0f172a;
 }
 
-::-webkit-scrollbar {
+/* スクロール可能領域でバーを完全に隠したい箇所だけに適用する。
+   グローバルにバーを消すと、特に Firefox など WebKit 以外で
+   スクロール可能性が判別できなくなる UX 上の問題があるため局所化する。 */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 

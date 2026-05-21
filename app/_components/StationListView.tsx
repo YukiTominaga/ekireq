@@ -4,15 +4,13 @@ import { useMemo, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import {
   PREFECTURES,
-  STATION_DATA,
-  getAllStations,
-  stationKey,
   type Prefecture,
   type StationWithMeta,
 } from "@/app/lib/stations";
 import { Icon } from "./Icon";
 
 type Props = {
+  allStations: StationWithMeta[];
   counts: Record<string, number>;
   onSelect: (s: StationWithMeta) => void;
 };
@@ -22,11 +20,29 @@ type SearchResult = {
   lineCount: number;
 };
 
-export function StationListView({ counts, onSelect }: Props) {
+// 都道府県 → 路線名 → 駅一覧 へのインデックス。STATION_DATA を直接参照する代わりに
+// 親から渡される allStations を集計して構築する (初期バンドルから巨大データを分離)。
+type LinesByPref = Record<Prefecture, Record<string, StationWithMeta[]>>;
+
+function buildLinesByPref(allStations: StationWithMeta[]): LinesByPref {
+  const out = {} as LinesByPref;
+  for (const p of PREFECTURES) out[p] = {};
+  for (const s of allStations) {
+    const pref = s.prefecture as Prefecture;
+    if (!out[pref]) out[pref] = {};
+    (out[pref][s.line] ??= []).push(s);
+  }
+  return out;
+}
+
+export function StationListView({ allStations, counts, onSelect }: Props) {
   const [pref, setPref] = useState<Prefecture>("東京");
   const [query, setQuery] = useState("");
 
-  const allStations = useMemo(() => getAllStations(), []);
+  const linesByPref = useMemo(
+    () => buildLinesByPref(allStations),
+    [allStations],
+  );
 
   const trimmed = query.trim();
   const isSearching = trimmed !== "";
@@ -48,7 +64,10 @@ export function StationListView({ counts, onSelect }: Props) {
   }, [allStations, trimmed, isSearching]);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", background: C.white }}>
+    <div
+      className="no-scrollbar"
+      style={{ flex: 1, overflowY: "auto", background: C.white }}
+    >
       <div
         style={{
           position: "sticky",
@@ -138,7 +157,13 @@ export function StationListView({ counts, onSelect }: Props) {
       {isSearching ? (
         <SearchResults results={results} counts={counts} onSelect={onSelect} />
       ) : (
-        <Lines key={pref} pref={pref} counts={counts} onSelect={onSelect} />
+        <Lines
+          key={pref}
+          pref={pref}
+          linesByPref={linesByPref}
+          counts={counts}
+          onSelect={onSelect}
+        />
       )}
     </div>
   );
@@ -235,34 +260,37 @@ function SearchResults({
 
 function Lines({
   pref,
+  linesByPref,
   counts,
   onSelect,
 }: {
   pref: Prefecture;
+  linesByPref: LinesByPref;
   counts: Record<string, number>;
   onSelect: (s: StationWithMeta) => void;
 }) {
   const [openLine, setOpenLine] = useState<string | null>(null);
-  const lines = Object.keys(STATION_DATA[pref] ?? {});
+  const linesForPref = linesByPref[pref] ?? {};
+  const lines = Object.keys(linesForPref);
 
   const totals = useMemo<Record<string, number>>(() => {
     const out: Record<string, number> = {};
     for (const line of lines) {
       let sum = 0;
-      for (const stn of STATION_DATA[pref][line]) {
-        sum += counts[stationKey(pref, stn.name)] ?? 0;
+      for (const stn of linesForPref[line] ?? []) {
+        sum += counts[stn.key] ?? 0;
       }
       out[line] = sum;
     }
     return out;
-    // lines は STATION_DATA[pref] から導出される静的データなので依存に含めない
+    // lines は linesForPref から導出される静的データなので依存に含めない
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pref, counts]);
+  }, [pref, linesByPref, counts]);
 
   return (
     <>
       {lines.map((line) => {
-        const stations = STATION_DATA[pref][line];
+        const stations = linesForPref[line];
         const isOpen = openLine === line;
         const total = totals[line] ?? 0;
         return (
@@ -304,18 +332,11 @@ function Lines({
             </button>
             {isOpen && (
               <div style={{ background: C.slate50 }}>
-                {stations.map((stn) => {
-                  const key = stationKey(pref, stn.name);
-                  const count = counts[key] ?? 0;
-                  const meta: StationWithMeta = {
-                    ...stn,
-                    prefecture: pref,
-                    line,
-                    key,
-                  };
+                {stations.map((meta) => {
+                  const count = counts[meta.key] ?? 0;
                   return (
                     <button
-                      key={stn.id}
+                      key={meta.id}
                       onClick={() => onSelect(meta)}
                       style={{
                         width: "100%",
@@ -332,7 +353,7 @@ function Lines({
                       }}
                     >
                       <span style={{ fontSize: 13, color: C.slate700 }}>
-                        {stn.name}駅
+                        {meta.name}駅
                       </span>
                       {count > 0 && (
                         <span

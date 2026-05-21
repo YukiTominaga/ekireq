@@ -46,7 +46,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // WCAG 1.4.4 (Resize Text) 準拠: ユーザーピンチズームを禁止しない。
+  maximumScale: 5,
   themeColor: "#0f172a",
 };
 

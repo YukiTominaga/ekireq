@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { C } from "@/app/lib/tokens";
 import { useAuth, signOut } from "@/app/lib/auth";
 import { subscribeStationCounts } from "@/app/lib/firestore";
-import { getUniqueStations, type StationWithMeta } from "@/app/lib/stations";
+import { getAllStations, type StationWithMeta } from "@/app/lib/stations";
 import { Btn } from "./ui";
 import { Icon } from "./Icon";
 import { UserAvatar } from "./UserAvatar";
@@ -21,10 +21,33 @@ export function StationApp() {
   const [selected, setSelected] = useState<StationWithMeta | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [allStations, setAllStations] = useState<StationWithMeta[]>([]);
 
-  const mapStations = useMemo(() => getUniqueStations(), []);
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapsMapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+
+  useEffect(() => {
+    let cancelled = false;
+    getAllStations().then((s) => {
+      if (!cancelled) setAllStations(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 地図ではマーカー重複を避けるため、駅 key 単位で重複排除する。
+  const mapStations = useMemo(() => {
+    const seen = new Set<string>();
+    const out: StationWithMeta[] = [];
+    for (const s of allStations) {
+      if (!seen.has(s.key)) {
+        seen.add(s.key);
+        out.push(s);
+      }
+    }
+    return out;
+  }, [allStations]);
 
   useEffect(() => {
     return subscribeStationCounts(setCounts);
@@ -180,7 +203,11 @@ export function StationApp() {
               overflow: "hidden",
             }}
           >
-            <StationListView counts={counts} onSelect={handleSelect} />
+            <StationListView
+              allStations={allStations}
+              counts={counts}
+              onSelect={handleSelect}
+            />
           </div>
         )}
 

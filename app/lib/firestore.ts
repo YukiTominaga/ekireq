@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  addDoc,
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   increment,
@@ -106,11 +108,11 @@ export async function addPost(args: {
   text: string;
   categories: string[];
 }) {
+  // stationStats.postCount は Cloud Functions (functions/src/index.ts:onPostCreated)
+  // が posts への作成をトリガに増減するため、クライアントは posts のみを書く。
   const { db } = getFirebase();
   const { stationKey, stationName, prefecture, user, text, categories } = args;
-  const batch = writeBatch(db);
-  const postRef = doc(collection(db, "posts"));
-  batch.set(postRef, {
+  await addDoc(collection(db, "posts"), {
     stationKey,
     stationName,
     prefecture,
@@ -124,34 +126,17 @@ export async function addPost(args: {
     reportsCount: 0,
     createdAt: serverTimestamp(),
   });
-  const statsRef = doc(db, "stationStats", stationKey);
-  batch.set(
-    statsRef,
-    {
-      stationKey,
-      stationName,
-      prefecture,
-      postCount: increment(1),
-    },
-    { merge: true },
-  );
-  await batch.commit();
 }
 
 export async function deletePost(args: {
   postId: string;
   stationKey: string;
 }) {
+  // stationStats.postCount は Cloud Functions (functions/src/index.ts:onPostDeleted)
+  // が posts への削除をトリガに減算するため、クライアントは posts のみを消す。
   const { db } = getFirebase();
-  const { postId, stationKey } = args;
-  const batch = writeBatch(db);
-  batch.delete(doc(db, "posts", postId));
-  batch.set(
-    doc(db, "stationStats", stationKey),
-    { postCount: increment(-1) },
-    { merge: true },
-  );
-  await batch.commit();
+  const { postId } = args;
+  await deleteDoc(doc(db, "posts", postId));
 }
 
 export async function toggleLike(postId: string, userId: string) {

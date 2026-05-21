@@ -329,12 +329,12 @@ export function StationSheet({
           }}
         >
           <div
+            className="no-scrollbar"
             style={{
               display: "flex",
               gap: 6,
               overflowX: "auto",
               padding: "0 14px 8px",
-              scrollbarWidth: "none",
             }}
           >
             <Badge
@@ -359,7 +359,7 @@ export function StationSheet({
           </div>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1 }}>
+        <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1 }}>
           {filtered.length === 0 && (
             <div
               style={{

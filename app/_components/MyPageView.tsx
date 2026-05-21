@@ -51,6 +51,9 @@ export function MyPageView({
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [stationMetaByKey, setStationMetaByKey] = useState<
+    Map<string, StationWithMeta>
+  >(() => new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -58,10 +61,17 @@ export function MyPageView({
     return () => unsub();
   }, [user]);
 
-  const stationMetaByKey = useMemo(() => {
-    const m = new Map<string, StationWithMeta>();
-    for (const s of getUniqueStations()) m.set(s.key, s);
-    return m;
+  useEffect(() => {
+    let cancelled = false;
+    getUniqueStations().then((stations) => {
+      if (cancelled) return;
+      const m = new Map<string, StationWithMeta>();
+      for (const s of stations) m.set(s.key, s);
+      setStationMetaByKey(m);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const groups: StationGroup[] = useMemo(() => {
@@ -197,6 +207,7 @@ export function MyPageView({
   return (
     <>
     <div
+      className="no-scrollbar"
       style={{
         flex: 1,
         overflowY: "auto",

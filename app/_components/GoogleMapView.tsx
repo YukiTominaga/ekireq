@@ -372,6 +372,7 @@ function MapSearch({
 
       {showDropdown && (
         <div
+          className="no-scrollbar"
           style={{
             marginTop: 6,
             background: C.white,

@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { CATEGORIES, PREFECTURES, stationKey } from "./stations";
+// テストでは同期 API を使いたいので、dynamic import 経由ではなく直接データモジュールから取得する。
 import {
-  CATEGORIES,
-  PREFECTURES,
   STATION_DATA,
   getAllStations,
   getUniqueStations,
-  stationKey,
-} from "./stations";
+} from "./stations-data";
 
 describe("stationKey", () => {
   it("returns `${prefecture}:${name}` joined by colon", () => {
