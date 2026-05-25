@@ -85,9 +85,9 @@ export default function RootLayout({
       <head>
         <meta httpEquiv="Content-Security-Policy" content={CSP} />
       </head>
-      <body className="h-full bg-slate-200 flex justify-center overflow-hidden">
+      <body className="h-full bg-white overflow-hidden">
         <ToastProvider>
-          <div className="w-full max-w-[390px] h-full bg-white shadow-xl flex flex-col">
+          <div className="w-full h-full bg-white flex flex-col">
             {children}
           </div>
         </ToastProvider>
