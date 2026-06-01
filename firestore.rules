@@ -26,9 +26,18 @@ service cloud.firestore {
       return ['spam', 'harassment', 'inappropriate', 'personal_info', 'other'];
     }
 
+    // 都道府県のホワイトリスト (app/lib/stations.ts:PREFECTURES と一致させる)
+    function validPrefectures() {
+      return ['東京', '神奈川', '埼玉', '千葉'];
+    }
+
     // 投稿
     match /posts/{postId} {
-      // 公開: 誰でも読める
+      // 公開: ログイン不要で誰でも読める。
+      // ※ 正規アプリ以外 (SDK 直叩きのスクレイピング等) の遮断は、ルールではなく
+      //   App Check のサービスレベル enforcement (Firebase Console / Terraform の
+      //   google_firebase_app_check_service_config) で行う。これによりエミュレータ
+      //   開発を壊さず、検証メトリクスと猶予期間つきで段階的に強制できる。
       allow read: if true;
 
       // 作成: ログイン中のユーザーが自分の userId で投稿する場合のみ
@@ -51,15 +60,48 @@ service cloud.firestore {
                     && request.resource.data.reportsCount == 0
                     && request.resource.data.categories is list
                     && request.resource.data.categories.size() <= 12
-                    && request.resource.data.categories.hasOnly(validCategories());
+                    && request.resource.data.categories.hasOnly(validCategories())
+                    // 駅情報の検証 (H-3): Cloud Functions が stationStats を集計する際の
+                    // 入力源になるため、なりすまし駅・矛盾するキーを作成段階で弾く。
+                    // stationKey は app/lib/stations.ts:stationKey() と同形式 "{都道府県}:{駅名}"。
+                    && request.resource.data.prefecture in validPrefectures()
+                    && request.resource.data.stationName is string
+                    && request.resource.data.stationName.size() > 0
+                    && request.resource.data.stationName.size() <= 60
+                    && request.resource.data.stationKey
+                       == request.resource.data.prefecture + ':' + request.resource.data.stationName;
 
-      // 更新:
-      //  - ログイン中のユーザーが「いいね」操作 (likedBy / likesCount) または通報集計 (reportsCount) を行う場合
-      //  - 投稿者本人がユーザー名 (userName) を編集する場合 (1〜60 byte)
+      // 更新 (H-1): カウンタの無制限改ざんを防ぐため、許可するのは以下のみ。
+      //  (1) いいねトグル: 自分の uid を 1 件だけ likedBy に追加/削除し、
+      //      likesCount をそれに整合して ±1 する操作だけ。他人の uid の増減や
+      //      likesCount の任意設定は不可。
+      //  (2) 投稿者本人による userName の編集 (1〜60 文字)。
+      // reportsCount はクライアントから一切書けない。reports の作成/削除をトリガに
+      // Cloud Functions (functions/src/index.ts) がサーバ側で増減する。
       allow update: if request.auth != null
                     && (
-                      request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['likedBy', 'likesCount', 'reportsCount'])
+                      // (1) いいねトグル
+                      (
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['likedBy', 'likesCount'])
+                        && request.resource.data.likedBy is list
+                        && request.resource.data.likesCount is int
+                        && (
+                          // 追加: 既存の likedBy を保持し、増えたのは自分の uid だけ。count +1。
+                          (
+                            request.resource.data.likedBy.hasAll(resource.data.likedBy)
+                            && request.resource.data.likedBy.removeAll(resource.data.likedBy) == [request.auth.uid]
+                            && request.resource.data.likesCount == resource.data.likesCount + 1
+                          )
+                          // 削除: 新しい likedBy を既存が包含し、減ったのは自分の uid だけ。count -1。
+                          || (
+                            resource.data.likedBy.hasAll(request.resource.data.likedBy)
+                            && resource.data.likedBy.removeAll(request.resource.data.likedBy) == [request.auth.uid]
+                            && request.resource.data.likesCount == resource.data.likesCount - 1
+                          )
+                        )
+                      )
+                      // (2) 投稿者本人による userName 編集
                       || (
                         resource.data.userId == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
@@ -79,6 +121,7 @@ service cloud.firestore {
     // postCount は posts コレクションへの create/delete をトリガとした Cloud Functions
     // (functions/src/index.ts) が増減させる。クライアントからは読み取り専用。
     match /stationStats/{stationKey} {
+      // posts と同様、読み取りの遮断は App Check のサービスレベル enforcement で行う。
       allow read: if true;
       allow write: if false;
     }

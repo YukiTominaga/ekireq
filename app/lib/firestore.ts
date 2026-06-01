@@ -117,7 +117,9 @@ export async function addPost(args: {
     stationName,
     prefecture,
     userId: user.uid,
-    userName: user.displayName || user.email?.split("@")[0] || "ゲスト",
+    // PII 最小化: 公開ドキュメントに email ローカルパートを焼き付けないため、
+    // displayName が無い場合は email へフォールバックせず "ゲスト" を使う。
+    userName: user.displayName || "ゲスト",
     userPhotoURL: user.photoURL ?? null,
     text,
     categories,
@@ -172,8 +174,10 @@ export async function reportPost(args: {
     throw new Error("自分の投稿は通報できません");
   }
   const { db } = getFirebase();
+  // reportsCount は Cloud Functions (functions/src/index.ts:onReportCreated) が
+  // reports の作成をトリガにサーバ側で増減する。クライアントは reports のみを書く
+  // (posts.reportsCount はルール上クライアントから更新できない)。
   const reportRef = doc(db, "reports", `${post.id}_${user.uid}`);
-  const postRef = doc(db, "posts", post.id);
   await runTransaction(db, async (tx) => {
     const reportSnap = await tx.get(reportRef);
     if (reportSnap.exists()) {
@@ -186,7 +190,6 @@ export async function reportPost(args: {
       reason,
       createdAt: serverTimestamp(),
     });
-    tx.update(postRef, { reportsCount: increment(1) });
   });
 }
 

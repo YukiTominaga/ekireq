@@ -60,14 +60,17 @@ export const viewport: Viewport = {
 // 必要なサードパーティ origin は最小に絞ること。
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://apis.google.com https://www.gstatic.com https://*.firebaseapp.com",
+  // www.google.com / www.gstatic.com は App Check の reCAPTCHA Enterprise が
+  // enterprise.js を読み込むために必要 (gstatic は既出)。
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://apis.google.com https://www.gstatic.com https://www.google.com https://*.firebaseapp.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com https://*.google.com https://maps.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   // Google Maps SDK は機能検出のため極小 PNG を data: URL として fetch する。
   // connect-src に data: を含めないと CSP 違反になるので許可している。
   "connect-src 'self' data: https://*.googleapis.com https://*.google.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
-  "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com",
+  // www.google.com は reCAPTCHA Enterprise のチャレンジ iframe 用。
+  "frame-src 'self' https://accounts.google.com https://www.google.com https://*.firebaseapp.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
