@@ -76,3 +76,48 @@ export const onPostDeleted = onDocumentDeleted(
     });
   },
 );
+
+// reports への作成をトリガに posts.reportsCount を +1 する。
+// クライアントは posts.reportsCount を直接更新できない (firestore.rules:H-1) ため、
+// 通報集計はサーバ側でここに一元化する。
+export const onReportCreated = onDocumentCreated(
+  { document: "reports/{reportId}", database: DATABASE },
+  async (event) => {
+    const report = event.data?.data();
+    if (!report) return;
+    const postId = report.postId as string | undefined;
+    if (!postId) return;
+
+    await getFirestore(DATABASE)
+      .doc(`posts/${postId}`)
+      .update({ reportsCount: FieldValue.increment(1) })
+      .catch(() => {
+        // 対象の投稿が既に削除されている等の場合は無視する。
+      });
+  },
+);
+
+// reports 削除時 (管理者によるモデレーション取り消し等) に posts.reportsCount を -1 する。
+// 0 件以下にはしない (defensive)。
+export const onReportDeleted = onDocumentDeleted(
+  { document: "reports/{reportId}", database: DATABASE },
+  async (event) => {
+    const report = event.data?.data();
+    if (!report) return;
+    const postId = report.postId as string | undefined;
+    if (!postId) return;
+
+    const db = getFirestore(DATABASE);
+    await db.runTransaction(async (tx) => {
+      const ref = db.doc(`posts/${postId}`);
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const current = (snap.data()?.reportsCount as number | undefined) ?? 0;
+      if (current <= 0) {
+        tx.set(ref, { reportsCount: 0 }, { merge: true });
+      } else {
+        tx.update(ref, { reportsCount: FieldValue.increment(-1) });
+      }
+    });
+  },
+);
